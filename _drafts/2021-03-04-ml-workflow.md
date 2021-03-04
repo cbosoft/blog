@@ -1,6 +1,7 @@
 ---
 title: Machine Learning Workflow
 layout: post
+excerpt: How do you do more with real data in machine learning?
 ---
 
 # Introduction

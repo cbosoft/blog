@@ -6,12 +6,12 @@ permalink:        pretty
 title:            CMJB
 tagline:          'Ramblings about science and stuff'
 description:      'Read this blog for ramblings about whatever has me up at night this week.'
-url:              http://cbosoft.github.io
-baseurl:          /
+url:              'http://cbosoft.github.io'
+baseurl:          ''
 
 author:
   name:           'Chris Boyle'
-  url:            https://github.com/cbosoft
+  url:            'https://github.com/cbosoft'
 
 paginate:         5
 include:
