@@ -1,0 +1,30 @@
+digraph G {
+  00 [label="00 SEGMENT",shape=rectangle];
+  05 [label="05 ANNOTATE",shape=rectangle];
+  07 [label="07 BACKUP",shape=rectangle];
+  10 [label="10 TRAIN",shape=rectangle];
+  15 [label="15 CHECK CONFIDENCE",shape=diamond];
+  20 [label="20 PREDICT",shape=rectangle];
+  
+  start->00;
+  00->05;
+  00->07;
+  05->07;
+  07:s->10;
+  15->10[dir=back];
+  05:s->15:n[label="Uncertain\nresults",dir=back];
+  15->20[label="No uncertain\nresults"];
+  
+  20->end;
+  {
+    rank=same;
+    00; 05; 07;
+  }
+  {
+    rank=same;
+    10; 15;
+  }
+  
+  start [shape=Mdiamond];
+  end [shape=Msquare];
+}
