@@ -1,0 +1,66 @@
+---
+layout: post
+title: Cramped-object detection using OpenCV-python
+tag: WIP
+excerpt: How to detect objects, even when boundaries are not clear.
+desc: Cell detection using python and opencv.
+---
+
+<div id="outline-container-org4bb4d2b" class="outline-2">
+<h2 id="org4bb4d2b">The problem</h2>
+<div class="outline-text-2" id="text-org4bb4d2b">
+<p>
+Suppose you have a microscope image of some tissue. Some cells in the tissue are
+stained so they glow a certain colour. You want to quantify these cells so you
+know how many have been stained. This would be easy if the cells are sparse, you
+could just could the coloured blobs. However, if the tissue is relatively intact
+the cells might be in very close proximity to one another, <b>with poorly defined
+borders</b>. This makes it difficult to decide which cell is which.
+</p>
+
+<center>
+<img src="{{ site.images_dir }}/cell_example.png" style="width: 50%;">
+<p><b>Figure</b>: an example of these ill-defined cells. From: <a href="https://doi.org/10.1186/s12948-018-0084-9">doi.org/10.1186/s12948-018-0084-9</a></p>
+</center>
+
+<p>
+In the above figure, there are examples of cells which have been stained. No
+idea what kind of cell, where they came from, or what they're stained with; this
+was the first image result I found that fit the problem parameters. Figure
+sections C and E show the "smushed" effect quite nicely.
+</p>
+
+<p>
+I think this could be solved using Python and OpenCV.
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org0372aae" class="outline-2">
+<h2 id="org0372aae">Reading the image</h2>
+<div class="outline-text-2" id="text-org0372aae">
+<p>
+The image I have is a .png with 12 sections showing different densities of
+cells.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python">
+<span style="color: #ff79c6; font-weight: bold;">import</span> cv2
+
+<span style="color: #d8d8d8; font-weight: bold;">im</span> = cv2.imread(<span style="color: #f1fa8c;">'path/to/image.png'</span>, 0)
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org4f56602" class="outline-2">
+<h2 id="org4f56602">Abandoned</h2>
+<div class="outline-text-2" id="text-org4f56602">
+<p>
+Turns out, this task is pretty darn tricky. The person I was doing this for isn't all that keen on keepin on
+</p>
+</div>
+</div>
