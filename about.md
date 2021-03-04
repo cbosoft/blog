@@ -3,28 +3,15 @@ layout: page
 title: About
 ---
 
-<p class="message">
-  Hey there! This page is included as an example. Feel free to customize it for your own use upon downloading. Carry on!
-</p>
+I'm Chris! A researcher of things, and general nerd. I am finishing up my PhD
+(where I delved into the causes of some pretty cool rheological phenomena in
+cornstarch suspensions) and have just started a Research Assistant position at
+CMAC in the University of Strathclyde.  I'm building better ways of measuring
+shape and size of crystal particles (the pharmaceutical kind, not the
+homeopathic kind).
 
-In the novel, *The Strange Case of Dr. Jeykll and Mr. Hyde*, Mr. Poole is Dr. Jekyll's virtuous and loyal butler. Similarly, Poole is an upstanding and effective butler that helps you build Jekyll themes. It's made by [@mdo](https://twitter.com/mdo).
+I'm interested in lots of things: machine learning, computer programming,
+physics, electronics, video games (playing them), video games (designing them).
 
-There are currently two themes built on Poole:
-
-* [Hyde](http://hyde.getpoole.com)
-* [Lanyon](http://lanyon.getpoole.com)
-
-Learn more and contribute on [GitHub](https://github.com/poole).
-
-## Setup
-
-Some fun facts about the setup of this project include:
-
-* Built for [Jekyll](http://jekyllrb.com)
-* Developed on GitHub and hosted for free on [GitHub Pages](https://pages.github.com)
-* Coded with [Sublime Text 2](http://sublimetext.com), an amazing code editor
-* Designed and developed while listening to music like [Blood Bros Trilogy](https://soundcloud.com/maddecent/sets/blood-bros-series)
-
-Have questions or suggestions? Feel free to [open an issue on GitHub](https://github.com/poole/issues/new) or [ask me on Twitter](https://twitter.com/mdo).
-
-Thanks for reading!
+Most of my posts here will centre around a project I've been working on - check
+them out on my [github](https://github.com/cbosoft).
