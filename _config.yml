@@ -1,14 +1,8 @@
-# Dependencies
-# markdown:         redcarpet
-# highlighter:      pygments
 plugins:
   - jekyll-paginate
 
-# Permalinks
 permalink:        pretty
-# relative_permalinks: true
 
-# Setup
 title:            CMJB
 tagline:          'Ramblings about science and stuff'
 description:      'Read this blog for ramblings about whatever has me up at night this week.'
@@ -20,6 +14,5 @@ author:
   url:            https://github.com/cbosoft
 
 paginate:         5
-
-# Custom vars
-version:          2.1.0
+include:
+  - img
