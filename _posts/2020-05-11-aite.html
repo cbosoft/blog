@@ -1,0 +1,195 @@
+---
+title: "Àite Domhainn: a strategy game for the patient"
+excerpt: "Àite is a game I've been working on the last few weeks, thought I'd share some ramblings about the process so far."
+layout: post
+---
+
+
+<div id="outline-container-org6d79ec6" class="outline-2">
+<h2 id="org6d79ec6">Beginnings and Coronavirus</h2>
+<div class="outline-text-2" id="text-org6d79ec6">
+<p>
+My first ever foray into programming was writing a video game. I was inspired
+by the seemingly simple idea of <a href="https://xkcd.com/91/">xkcd #91</a>: what if the game Counterstrike was a
+text adventure? However I was young, and dijkstra's confused me and map
+traversing AI tripped me up the first time. (Although, I got the server/client
+code to work and managed to get a rudimentary chat function working between a
+friends computer and mine.)
+</p>
+
+<p>
+Since then, I have programmed mainly as part of my University course, rarely
+just for pleasure. (Although programming for uni is still a pleasure in
+itself!)
+</p>
+
+<p>
+Today, I am a researcher studying fluid flow of dense suspensions, and I am
+primarily lab-based. Lab based meaning I am locked out currently due to the
+global pandemic of Coronavirus. This has left me feeling unproductive in a
+time where I should be at my most busy: I have less than 6 months of funding
+left and a bunch of experiments to get done before then!
+</p>
+
+<p>
+This has lead to me envying the computational crowd. A set of simulations can
+be scripted to run with the desired mix of parameters and then&#x2026; left to do
+its own thing. This process can take days, weeks depending on the hardware. In
+the meantime, you're free to write, analyse, whatever knowing that you're
+doing two things at once. I envy the compound productivity.
+</p>
+
+<p>
+I have always like that idea, of setting something up and letting it run and
+enjoying the benefits (like a savings account, like a good playlist, like an
+idle game). That last though gave me the idea to create a game. I like the
+general idea of <a href="https://en.wikipedia.org/wiki/Incremental_game">idle games</a>, but they tend to micropayments and boredom. I
+really just like the idea that a game can continue in the players absence,
+perhaps on autopilot (like EVE online).
+</p>
+
+<p>
+I thought, if I can't have simulations running to compound my productivity,
+what about an idle game to give me a feeling of ersatz productivity? Enter:
+Àite.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org64327f2" class="outline-2">
+<h2 id="org64327f2">Àite Domhainn</h2>
+<div class="outline-text-2" id="text-org64327f2">
+<p>
+I decided to start writing a strategy game, one with long-timescales, one
+which runs in real-time (sort of), no pause, with possible multi-player but
+that's not the focus, with exploration at the heart, with discovery rewarded
+with a story pieced-together through fragments of the whole picture. And so
+Àite was begun.
+</p>
+
+<p>
+The name is Scottish Gaelic, it means "profound place". (Perhaps a deep space?)
+</p>
+
+<p>
+In Àite, the player controls a colony punted to a random location in the
+universe. The colonists are equipped with basic necessities required for
+survival, but far from enough. They must be guided through their progress
+through <b>projects</b> dictated by the player; generation-spanning projects to
+match the scale of the environment.
+</p>
+
+<p>
+Their needs must be met or face <b>rebellion</b>. Governance and social care are as
+important as resource management. People act drastically in large groups if
+not treated properly. Mistrust of their governing body (whether the leader of
+the group of colonists, or the president of the colony of planets) can not end
+well.
+</p>
+
+<p>
+Culture and art are an important part of a society. People enjoy art, a
+developed culture helps a society cope with non-ideal circumstance. A culture
+may independently develop a religion, or they may assign meaning to random
+acts. Nurturing a culture is an important factor in ensuring a peaceful
+society.
+</p>
+
+<p>
+New technologies will need to be developed to facilitate the exploration and
+colonisation of new worlds; a world can only support so much life!
+</p>
+
+<p>
+Multiple colonies can exist in the same universe. Given the vastness of space
+(dictated here by the size of the <code>double</code> type), there is an almost
+nil-chance that two colonies in the same universe will ever interact. If they
+do, they will gain the chance to trade, to cooperate or to fight, whatever
+they wish. Given the nature of the game, the reaction of a colony to another
+may not entirely be under player control. Perhaps an expansionist colony will
+disregard cultural exchange instead for the chance of claiming worlds for
+themselves?
+</p>
+
+<p>
+This covers roughly what I want the game to be; a long-scale strategy game
+about survival. The game is procedurally generated, but I do want there to be
+a story told in the Dark Souls style; given in drips and drabs, ambiguous,
+pieced together. This can be unveiled to the player by their investigation of
+a planet (by geological survey, archeaological dig etc) slowly feeding them
+information about this fictionalised universe.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org510225a" class="outline-2">
+<h2 id="org510225a">Gameplay</h2>
+<div class="outline-text-2" id="text-org510225a">
+<p>
+The game will have be client/server, where the server runs the world and the
+client merely interfaces with the server. I am mainly planning on a simple
+readline-based CLI interface, but an ncurses based TUI would be nice too. A
+GUI would be nice, it would be very cool to zoom about the universe, but it is
+not really the priority of this game.
+</p>
+
+<p>
+The CLI will be a simple command processor parsing arguments and performing
+basic syntax checking before sending to the server, waiting for a reply.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash">$ aite_client show_messages
+Messages:
+  Discovered planet. It has been named Aname.
+</pre>
+</div>
+
+<p>
+Through the client, the player can check the status of their colony, issue
+commands to alter ongoing projects, add new projects, cancel previous
+ones. Projects are the main manner in which a colony is directed.
+</p>
+
+<p>
+The basic cli is to be simple and quick, so that it can be run, say, from a
+<code>.bashrc</code> so that a player can see their colony's progress quickly on
+login. The main pay-off for the player, I expect, will be the vicarious
+discovery of new worlds, nebulae, stars through the use of semi-fictional new
+technologies like the hypothetical Dyson sphere.
+</p>
+
+<p>
+There is so much in the universe we can't see: dark matter is hypothesised to
+make up 85% of matter!  If life is possible in visible matter, why not in dark
+matter? New technologies may shed light on the unseen, life may exist all
+around us but we just can't see it.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org554af6e" class="outline-2">
+<h2 id="org554af6e">Inspiration</h2>
+<div class="outline-text-2" id="text-org554af6e">
+<p>
+What I've been reading:
+</p>
+
+<ul class="org-ul">
+<li>Xeelee Sequence by Stephen Baxter</li>
+<li>Foundation trilogy by Isaac Asimov</li>
+<li>Dune by Frank Herbert</li>
+<li>Forever War by Joe Haldemann</li>
+<li>At the Mountains of Madness by H. P. Lovecraft</li>
+</ul>
+
+<p>
+What I've been playing:
+</p>
+
+<ul class="org-ul">
+<li>Dark souls (FromSoftware)</li>
+<li>Civilization V (Sid Meier)</li>
+</ul>
+</div>
+</div>

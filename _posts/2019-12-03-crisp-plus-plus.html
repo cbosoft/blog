@@ -1,0 +1,189 @@
+---
+layout: post
+title: "crisp - A(nother) LISP Interpreter. Part 3: C++, objects, polymorphism, and exceptions"
+tag: lisp interpreter crisp
+excerpt: Taking a wee meta-tangent by looking at the language we're using for this.
+---
+
+<div id="outline-container-org71c8f38" class="outline-2">
+<h2 id="org71c8f38">Why?</h2>
+<div class="outline-text-2" id="text-org71c8f38">
+<p>
+The <code>c</code> language is beautiful and stark. It is powerful, but lacks
+tools. If you want to do a lot in <code>c</code>, you need to write a lot. In
+addition, there are no <code>c</code> dev jobs going round where I am, so I'm
+moving to <code>C++</code>. <code>C++</code> has a lot of nice things built in, classes
+are great, templates could make writing the LispObject stuff easier
+and there are things like <code>std::shared_ptr</code> which could negate the
+need for a separate garbage collector.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org0d451f1" class="outline-2">
+<h2 id="org0d451f1">So.. <code>C++</code>?</h2>
+<div class="outline-text-2" id="text-org0d451f1">
+<p>
+Yeah, <code>C++</code>! Hello <code>std::forward_list</code> instead of DIY linked list,
+<code>std::stack</code> instead of dynamic array. <code>std::string</code> and
+<code>std::stringstream</code> over <code>char *</code> and <code>snprintf</code> and soooo many streams!
+</p>
+
+<p>
+<code>C++</code> has classes; definable structures with methods,
+constructors. This replaces the plain structs I used for everything
+in <code>c</code>: for the objects, lists, atoms and so on. What's even better,
+is that classes can be derived from one another, using
+<i>polymorphs</i>. So an object's purpose could be fulfilled by different
+objects of slightly different type. We can have an object of atomic
+integer type, or of list type, both fit into an element of a
+list. We could use a polymorphic class to do this.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgba5135b" class="outline-2">
+<h2 id="orgba5135b">Next steps</h2>
+<div class="outline-text-2" id="text-orgba5135b">
+<p>
+I have started re-writing the interpreter in <code>C++</code> from the ground
+up. I'll keep to the same lisp-y syntax and the program will do the
+same jobs, but under the hood everything will be represented by an
+object. I'll start with the tokeniser and parser, where I will need
+to implement <code>LispObject</code>, <code>LispAtom</code>, <code>LispList</code>, and
+<code>LispEnvironment</code> then build up the evaluator and flesh out the
+standard library.
+</p>
+
+<p>
+As of this post, the interpreter is pretty much at the state where I
+left it in <code>c</code>, minus a lot of the standard library.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org19f06ac" class="outline-2">
+<h2 id="org19f06ac">Tokenising a string</h2>
+<div class="outline-text-2" id="text-org19f06ac">
+<p>
+I converted the tokenise function over to <code>C++</code>, making small
+changes, but nothing major:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color:  #dcdcaa;">#define</span> <span style="color: #dcdcaa;">IS_WHITESPACE</span>(<span style="color: #fff;">C</span>) ((C == <span style="color: #7cb461;">'\n'</span>) || (C == <span style="color: #7cb461;">' '</span>) || (C == <span style="color: #7cb461;">'\t'</span>))
+<span style="color:  #dcdcaa;">#define</span> <span style="color: #dcdcaa;">ADD_TO_TOKENS</span>(<span style="color: #fff;">KW</span>) \
+  new_token = new LispToken(KW);\
+  <span style="color: #9cdcfe;">if</span> (rv == <span style="color: #569cd6;">NULL</span>) {\
+    rv = new_token;\
+  }\
+  <span style="color: #9cdcfe;">else</span> {\
+    current_token-&gt;next = new_token;\
+  }\
+  current_token = new_token;
+
+
+
+<span style="color: #569cd6;">LispToken</span> *<span style="color: #dcdcaa;">tokenise</span>(std::string input)
+{
+
+  <span style="color: #569cd6;">char</span> <span style="color: #fff;">ch</span>, <span style="color: #fff;">nch</span>;
+  <span style="color: #569cd6;">unsigned</span> <span style="color: #569cd6;">long</span> <span style="color: #fff;">i</span> = 0;
+
+  std::stringstream kw_or_name_builder;
+  <span style="color: #569cd6;">bool</span> <span style="color: #fff;">in_quote</span> = 0, <span style="color: #fff;">add_close_parens_on_break</span> = 0, <span style="color: #fff;">add_close_parens_on_parens</span> = 0;
+  <span style="color: #569cd6;">int</span> <span style="color: #fff;">parens_level</span> = 0;
+
+  <span style="color: #569cd6;">LispToken</span> *<span style="color: #fff;">rv</span> = <span style="color: #569cd6;">NULL</span>, *<span style="color: #fff;">current_token</span> = <span style="color: #569cd6;">NULL</span>, *<span style="color: #fff;">new_token</span> = <span style="color: #569cd6;">NULL</span>;
+
+  <span style="color: #9cdcfe;">for</span> (i = 0, ch = input[0], nch=input[1]; i &lt; input.length(); ch = input[++i], nch=input[i+1]) {
+
+    <span style="color: #9cdcfe;">if</span> (input[i] == <span style="color: #7cb461;">';'</span>) {
+      <span style="color: #9cdcfe;">for</span> (;input[i] != <span style="color: #7cb461;">'\n'</span> &amp;&amp; i &lt; input.length(); i++);
+      <span style="color: #9cdcfe;">continue</span>;
+    }
+
+    <span style="color: #5C6370;">// </span><span style="color: #5C6370;">if breaking char: space, newline, or parens</span>
+    <span style="color: #9cdcfe;">if</span> (( IS_WHITESPACE(ch) || (ch == <span style="color: #7cb461;">')'</span>) || (ch == <span style="color: #7cb461;">'('</span>) || (ch == <span style="color: #7cb461;">'\''</span>)) &amp;&amp; !in_quote) {
+
+      <span style="color: #5C6370;">// </span><span style="color: #5C6370;">finish reading keyword or name</span>
+      <span style="color: #9cdcfe;">if</span> (kw_or_name_builder.str().length()) {
+        ADD_TO_TOKENS(kw_or_name_builder.str());
+        kw_or_name_builder.str(<span style="color: #7cb461;">""</span>);
+
+        <span style="color: #9cdcfe;">if</span> (add_close_parens_on_break) {
+          add_close_parens_on_break = 0;
+          ADD_TO_TOKENS(<span style="color: #7cb461;">")"</span>);
+        }
+      }
+
+      <span style="color: #5C6370;">// </span><span style="color: #5C6370;">TODO switch-case</span>
+      <span style="color: #5C6370;">// </span><span style="color: #5C6370;">action needed on breaking char?</span>
+      <span style="color: #9cdcfe;">if</span> (ch == <span style="color: #7cb461;">'('</span>) {
+        ADD_TO_TOKENS(<span style="color: #7cb461;">"("</span>);
+        parens_level++;
+      }
+      <span style="color: #9cdcfe;">if</span> (ch == <span style="color: #7cb461;">')'</span>) {
+        ADD_TO_TOKENS(<span style="color: #7cb461;">")"</span>);
+        parens_level--;
+
+        <span style="color: #9cdcfe;">if</span> (add_close_parens_on_parens) {
+          add_close_parens_on_parens = 0;
+          ADD_TO_TOKENS(<span style="color: #7cb461;">")"</span>);
+        }
+      }
+      <span style="color: #9cdcfe;">else</span> <span style="color: #9cdcfe;">if</span> (ch == <span style="color: #7cb461;">'\''</span>) {
+
+        ADD_TO_TOKENS(<span style="color: #7cb461;">"("</span>);
+        ADD_TO_TOKENS(<span style="color: #7cb461;">"quote"</span>);
+
+        <span style="color: #9cdcfe;">if</span> (nch == <span style="color: #7cb461;">'('</span>){
+          <span style="color: #5C6370;">//</span><span style="color: #5C6370;">debug_message("NEXT CHAR IS '('; quote list\n");</span>
+          add_close_parens_on_parens = 1;
+        }
+        <span style="color: #9cdcfe;">else</span> <span style="color: #9cdcfe;">if</span> (IS_WHITESPACE(nch)) {
+          <span style="color: #5C6370;">//</span><span style="color: #5C6370;">error</span>
+          <span style="color: #5C6370;">//</span><span style="color: #5C6370;">debug_message("NEXT CHAR IS WHITE SPACE! ERROR");</span>
+          <span style="color: #5C6370;">//</span><span style="color: #5C6370;">Exception_raise("SyntaxError", "tokenise", NULL, "single quote should be before a list or other object.");</span>
+        }
+        <span style="color: #9cdcfe;">else</span> {
+          add_close_parens_on_break = 1;
+          <span style="color: #5C6370;">//</span><span style="color: #5C6370;">debug_message("NEXT CHAR IS '('; quote kw\n");</span>
+        }
+      }
+
+    }
+    <span style="color: #9cdcfe;">else</span> {
+
+      <span style="color: #9cdcfe;">if</span> (ch == <span style="color: #7cb461;">'"'</span>)
+        in_quote = !in_quote;
+
+      kw_or_name_builder &lt;&lt; ch;
+
+    }
+
+  }
+
+  <span style="color: #9cdcfe;">if</span> (kw_or_name_builder.str().length()) {
+    ADD_TO_TOKENS(kw_or_name_builder.str());
+    kw_or_name_builder.str();
+
+    <span style="color: #9cdcfe;">if</span> (add_close_parens_on_break) {
+      add_close_parens_on_break = 0;
+      ADD_TO_TOKENS(<span style="color: #7cb461;">")"</span>);
+    }
+  }
+
+  <span style="color: #9cdcfe;">return</span> rv;
+}
+</pre>
+</div>
+
+<p>
+Main difference is the use of <code>std::string</code> and <code>std::stringstream</code>
+to builder up strings. This means that there's none of the
+accoutning of string length or memory size needed in the <code>c</code>
+implementation.
+</p>
+</div>
+</div>

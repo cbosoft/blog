@@ -1,0 +1,389 @@
+---
+title: Event Driven Simulation
+excerpt: "Event driven molecular dynamic simulation doesn't time step in the mormal way: it jumps from collision to collision. This allows for <b>real</b> hard sphere interaction. In this post I discuss building a simple ballistic event driven simulation package."
+layout: post
+---
+
+<div id="outline-container-org95495e8" class="outline-2">
+<h2 id="org95495e8">Motivation</h2>
+<div class="outline-text-2" id="text-org95495e8">
+<p>
+I start every post with a motivation section, and normally have something a
+bit useful to say. For this post, I have no "useful" motivation: I think event
+driven dynamics sounds interesting, and I want to give it a go. I think I
+could shoe-horn it into my research, but not to any great need.
+</p>
+
+<p>
+Traditionally, simulation of hard sphere particles is achieved by integrating
+a set of equations of motion, using some fancy method. This involves a (small)
+finite timestep. This can result in particles intersecting (slighlty) which is
+physically unrealisable and makes the simulation useless. To get around this,
+the "hard sphere" property of the particles is weakened to a "sort of hard
+sphere" by use of a potential - an equation which gives the force (derivative
+of the <b>potential</b> energy) experienced by a particle in response to another.
+</p>
+
+<p>
+A common potential is the Lennard-Jones 6-12 potential:
+</p>
+
+<p>
+\[ V_{LJ} = 4\varepsilon\left[{\left(\frac{\sigma}{r}\right)}^{12} - {\left(\frac{\sigma}{r}\right)}^{6}\right] \]
+</p>
+
+<p>
+This potential does a good job: it rapidly increases as \(r_{sep} \to
+  r_{radius}\), giving a continuous function describing the radius of a particle
+compatible with the finite step. However, I've implemented this in an MD sim
+(well, my supervisor did) and it still dies when particles intersect. Instead
+of just being insensible, the force on the intersecting particles becomes huge
+and the whole sim starts becoming very excited. This is better as it gives an
+indication of something being wrong, but there is still something wrong.
+</p>
+
+<p>
+Enter events. An event driven simulation calculates the time the next event
+will happen, then jumps to that point. The tricky part is then in sorting the
+events efficiently. The hard sphere property is maintained in this kind of
+simualtion, which makes it nice to do simulations with frictional particles as
+the boundaries of the particle are well defined and it is known when particles
+are in contact.
+</p>
+
+<p>
+Here's where my research could get involved: I do work with suspensions. The
+prevailing theory on the flow characteristics of dense suspensions of
+particles involves frictional contact between the particles. I am running
+experiments to attempt to collect statistics on the frictional interaction. If
+I could model this, I could get a better idea of what to look for. 
+</p>
+
+<p>
+In addition, I have a set of 3D printed bearings which are integral to my
+experimental set up but are a source of mechanical noise in my stress/torque
+readings: I would like to be able to simulate this (as a matter of curiosity)
+to see if I can re-create the type of noise I see in my measurements.
+</p>
+
+<p>
+Ooft, for a post claiming to not have much motivation, I've really rambled on
+here!
+</p>
+
+<p>
+In this post I'll run through the difficulties and major challenges I faced
+while building <a href="https://github.com/cbosoft/BEARS">BEARS</a>.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org172ed2e" class="outline-2">
+<h2 id="org172ed2e">Design goals</h2>
+<div class="outline-text-2" id="text-org172ed2e">
+<p>
+The simulation should: 
+</p>
+<ul class="org-ul">
+<li class="on"><code>[X]</code> be able to model particle interaction in a ballistic (i.e. classical mechanic) manner.</li>
+<li class="on"><code>[X]</code> be able to operate under periodic boundary conditions (where the
+sim-box is repeated in every dimension to mimic a larger population of
+particles and to limit edge effects).</li>
+<li class="on"><code>[X]</code> use event driven dynamics to enforce proper hard sphere behaviour.</li>
+<li class="on"><code>[X]</code> model in three dimensions.</li>
+<li class="on"><code>[X]</code> take into account rotational dynamics (even for just spheres: rotational
+velocity and orientation is important).</li>
+<li class="on"><code>[X]</code> take into account friction.</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgc07bf95" class="outline-2">
+<h2 id="orgc07bf95">What is an event and how can we find one?</h2>
+<div class="outline-text-2" id="text-orgc07bf95">
+<center>
+  <img src="{{ site.images_dir }}/collision_sketch.svg" width="80%"/>
+</center>
+
+<p>
+For this project, I'm defining an event as a collision of two previously
+separate particles. Every particle has a position and a velocity. These are
+both described by 3vectors:
+</p>
+
+<p>
+\[ \vec{p} = \begin{bmatrix} p^x \\ p^y \\ p^z \end{bmatrix} \]
+\[ \vec{v} = \begin{bmatrix} v^x \\ v^y \\ v^z \end{bmatrix} \]
+</p>
+
+<p>
+Confusingly, they tend to refer to position as \(\vec{r}\) in physics. I will
+not, position is \(\vec{p}\). It won't collide with momentum, which I will
+denote with a capital: \(\vec{P}\).
+</p>
+
+<p>
+Given these four vectors, \(\vec{p}_1\), \(\vec{p}_2\), \(\vec{r}_1\), and
+\(\vec{r}_2\), the challenge is to find out if they will collide, the time at
+which the particles will collide and where they will be.
+</p>
+
+<p>
+<b>This is surprisingly simple</b> (for plain ballistic simulation).
+</p>
+
+<p>
+Collision at:
+</p>
+
+<p>
+\[ \left| \vec{p}_1 - \vec{p}_2 \right| = \left| \Delta\vec{p} \right| = \frac{d_1 + d_2}{2} \]
+</p>
+
+<p>
+Where \(d\) is the diameter of a particle. The magnitude of the separation
+vector is given by:
+</p>
+
+<p>
+\[  \left| \Delta\vec{p} \right| = \sqrt{\Delta{}p^x \times \Delta{}p^x + \Delta{}p^x \times \Delta{}p^x + \Delta{}p^x \times \Delta{}p^x} \]
+</p>
+
+<p>
+And each position vector after time \(t\) is given by:
+</p>
+
+<p>
+\[ \vec{p}_1^t = \vec{p}_1 + \vec{v}_1 \times t \]
+</p>
+
+<p>
+Which we can sub into the above and the problem is just finding the roots of a
+polynomial:
+</p>
+
+<p>
+\[ \Delta\vec{v}\cdot\Delta\vec{v}t^2 + 2\Delta\vec{p}\cdot\Delta\vec{v}t + \Delta\vec{p}\cdot\Delta\vec{p} - \left(\frac{d_1 - d_2}{2}\right) = 0 \]
+</p>
+
+<p>
+Solving this gives us the time of a collision. Negative discriminant results
+in complex results: which means that the particles will not collide. Further,
+if the magnitude of the separation vector is the same as the average diameter,
+then the particles are already in contact. If the two solutions are positive,
+then the smallest one is the time to collide (the other being the time to
+collide and pass through to the other side). If the two solutions are
+negative, then the collision will not happen (unless time starts to go
+backwards!)
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge8986f4" class="outline-2">
+<h2 id="orge8986f4">Knowing when a pair of particles collide, what do they do afterward?</h2>
+<div class="outline-text-2" id="text-orge8986f4">
+<p>
+For a ballistic simulation, we can model the particle interaction by assuming
+<i>perfect elastic</i> collisions and can use the conservation of both momentum and
+kinetic energy to calculate the resulting velocity vectors of the two
+particles.
+</p>
+
+<p>
+\[ \vec{P}_1^b + \vec{P}_2^b = \vec{P}_1^a + \vec{P}_2^a \]
+\[ E_1^b + E_2^b = E_1^a + E_2^a \]
+</p>
+
+<p>
+(\(^b\) denotes <i>before</i> a collision and \(^a\) denotes <i>after</i>), we can
+calculate the velocity of a particle after a collision:
+</p>
+
+<p>
+\[ \vec{v}_1^a = \frac{m_1 - m_2}{m_1 + m_2}\vec{v}_1^b + \frac{2m_2}{m_1 + m_2}\vec{v}_2^b \]
+</p>
+
+<p>
+(Thanks, <a href="https://en.wikipedia.org/wiki/Elastic_collision">wikipedia</a>.)
+</p>
+
+<p>
+This meets the requirements of this simple ballistic simulation. What if we go
+further? What if friction is involved? What if the particles are nolonger
+"perfectly hard"? What if the particles are not interacting in a vaccuum but
+are suspended in a fluid? I'll cover these points in future posts as I build
+up the sim from this starting point.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org67776a4" class="outline-2">
+<h2 id="org67776a4">Program structure</h2>
+<div class="outline-text-2" id="text-org67776a4">
+<p>
+The structure of the program is fairly simple. We want to have a
+"containter-ish" sim class which is the box of particles, and manages
+timestepping and event detection - for now, when we get to parallelisation the
+particles may be given domain over this matter! Particles will be generated
+from a configuration file (the particle configuration file, not program
+settings kind of configuration file), which will be in a simple ascii format
+(space separated value or tab-separated value).
+</p>
+
+<p>
+Particle objects contain their properties:
+</p>
+<ul class="org-ul">
+<li>position,</li>
+<li>velocity,</li>
+<li>orientation,</li>
+<li>angular velocity,</li>
+<li>mass,</li>
+<li>diameter</li>
+</ul>
+
+<p>
+And also decide whether they collide with another particle or not.
+</p>
+
+<p>
+Particles are built on the heap, pointers to which are owned by the sim (so
+that pointers can be pased about which makes things nice and fast).
+</p>
+
+<p>
+Events are objects too (well, more like structures) and are returned by the
+particle <code>check_will_collide</code> method. These objects contian information on
+what particle is involved in the collision and when the collision will
+happen. (Pointers to) these events are stored in the sim in a container object.
+</p>
+
+<p>
+The <code>EventCollection</code> object manages the <code>CollisionEvent</code> objects which are
+<code>push_back</code>'d on to it. Internally, events are stored as a map, with a
+<code>std::pair&lt;int,int&gt;</code> of particle IDs as keys. This is a simple way to ensure
+particles don't interact with each other twice. It allows old events to be
+cleaned out as they are replaced. However, we need to sort the events by time
+and choose the smallest one - or, rather, we just need to find the minimum (an
+\(\mathcak{O}(n)\) operation). This collection becomes the owner of the event
+pointers pushed on to it: it ~delete~s them on destruction and when replaced.
+</p>
+
+<p>
+Trajectory output is important: we want to be able to track sim data (particle
+positions, kinetic energy, &#x2026;) over time, so that we may make and test
+hypotheses using the simulation. Otherwise, what's the point?
+</p>
+
+<p>
+During the debug stage, we want to be able to profile the code in some
+way. The main loop of the run method will need timers to see how long the
+event detection and output steps take, to identify areas that can be improved
+and to track how well each improvement performs.
+</p>
+
+<p>
+Finally, there will be a "main" file which parses arguments, creates a sim
+instance, loads the config file, and runs the simulation.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org952150e" class="outline-2">
+<h2 id="org952150e">Sim loop</h2>
+<div class="outline-text-2" id="text-org952150e">
+<p>
+The event finding process is then:
+</p>
+
+<ul class="org-ul">
+<li>update event collection</li>
+<li>find next event</li>
+<li>apply event: update all particle positions and transfer momentum of interacting particles</li>
+<li>repeat until no events left, or time has reached limit</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgebeb89a" class="outline-2">
+<h2 id="orgebeb89a">Efficiency gains</h2>
+<div class="outline-text-2" id="text-orgebeb89a">
+<p>
+The current process works great for small numbers of particles (near
+instantly for a box of 1000 particles evaporating), but is becomes very
+computationally expensive as the number increases. The search is
+\(O(n^2)\). That search order could be better.
+</p>
+
+<p>
+We only need to recalculate events for particles which were involved in the
+previous event, or were going to interact with particles in the previous
+event. 
+</p>
+
+<p>
+My supervisor suggested only re-calculating particle positions when they're
+involved in an event&#x2026; but we'd need to calculate position <i>anyway</i> when
+deciding if a collision will take place. Perhaps there's a better way to
+decide if particles interact?
+</p>
+
+<p>
+We can parallelise (not really an <i>efficiency</i> gain, but a performance gain
+to be sure) by chunking the list of particles and calculating next-events on
+each thread.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org8bedd87" class="outline-2">
+<h2 id="org8bedd87">Code</h2>
+<div class="outline-text-2" id="text-org8bedd87">
+<p>
+The code for this stage of development is immortalised on my github <a href="https://github.com/cbosoft/BEARS/tree/blog1">here</a>. I've
+made a separate branch for it as I will add features and alter the
+functionality in the future, but bugfixes may need to be retroactively
+applied.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org35b9163" class="outline-2">
+<h2 id="org35b9163">Future plans</h2>
+<div class="outline-text-2" id="text-org35b9163">
+<p>
+I've touched on this earlier, but the goal for this is to have a very
+performant simulation package for hard spheres. That means I want to be able
+to simulate upwards of a million particles in a reasonable amount of time <i>on
+conventional hardware</i> (e.g. my laptop's 8 core i7). I could use 100 or so
+cores of my department's mad simulation server, but that would be too easy!
+</p>
+
+<p>
+Given that end goal, here are my next steps:
+</p>
+<ul class="org-ul">
+<li><b>Particles with agency over their interaction</b>.  A particle should decide
+for itself when/if it will interact: this will allow N-threads to pop
+particles off a queue and calculate its event. This means each particle will</li>
+<li><b>Simplification of the vector class</b>.</li>
+<li><b>Simplification of the event calculation</b>.</li>
+</ul>
+</div>
+
+<div id="outline-container-orgd6a3ffa" class="outline-3">
+<h3 id="orgd6a3ffa">Some issues</h3>
+<div class="outline-text-3" id="text-orgd6a3ffa">
+<p>
+I have noticed through profiling that there is not a significant speed up
+when using multiple cores&#x2026; in fact, at best, it performs the same as when
+run on a single thread! I think I may need, for future versions, to look more
+at where the work is, and how I can split that up into threads.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf03c5fa" class="outline-2">
+<h2 id="orgf03c5fa">Resources</h2>
+</div>

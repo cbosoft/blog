@@ -1,0 +1,195 @@
+---
+layout: post
+title: "Undersampling: recovering high frequencies from an aliased sample."
+tag: WIP
+excerpt: Signal processing features prominently in my PhD project, and one issue I'm facing is how to recover an a signal given an aliased (undersampled) measurement.
+---
+
+
+<div id="outline-container-org98647be" class="outline-2">
+<h2 id="org98647be">Introduction</h2>
+<div class="outline-text-2" id="text-org98647be">
+<p>
+My project involves building laboratory equipment and using signal processing
+techniques to make sense of the measurements in a useful manner. One problem
+is that the data I want to measure is noisy. Another is that the signal I want
+to measure is high frequency. The nail in the coffin: my equipment is limited
+in what it can measure. This results in some lovely aliasing in my data.
+</p>
+
+<p>
+I want to tease more information out of my data and I hear tell of some
+magical technique apparently just called "Undersampling" wherein the high
+frequencies unable to be recovered by sampling can be reconstructed resulting
+in an approximation of the analogue signal.
+</p>
+
+<p>
+Upon first reading the <a href="https://en.wikipedia.org/wiki/Undersampling">Wikipedia (Undersampling)</a> article on undersampling, I was suitably
+confused. It's quite a dense article. So I searched about a wee bit and found
+a couple good articles and then I stumbled upon a great <a href="https://www.eetimes.com/how-to-use-undersampling/#">article</a> in EE Times. I
+think the figures did it for me, a really great intuitive explanation for what
+an undersampled signal looks like, and how this can be used to recover the
+original.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgb72f7c6" class="outline-2">
+<h2 id="orgb72f7c6">This is not about re-balancing data sets!</h2>
+<div class="outline-text-2" id="text-orgb72f7c6">
+<p>
+When I started searching about for information on undersampling as a signal
+processing technique, I found a whole lot of information on undersampling - a
+machine learning and data science technique for rebalancing datasets. <b>The
+topic of this post has nothing to do with <i>that</i> type of undersampling.</b>
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgaaca896" class="outline-2">
+<h2 id="orgaaca896">Undersampling</h2>
+<div class="outline-text-2" id="text-orgaaca896">
+<p>
+A signal is undersampled if the frequency with which it is sampled is less
+than twice the highest frequency in the signal. This is for <b>baseband</b>
+signals: signals which have a lowest frequency of 0, therefore the <b>bandwidth</b>
+becomes the same as the highest frequency.
+</p>
+
+<p>
+Looking at an example of an aliased signal, timeseries of different samplings
+on top, with Discrete Fourier Transform (DFT) on bottom:
+</p>
+
+<center><img src="/_images/fig_aliasing.png" /></center>
+
+<p>
+The signal is composed of three sine waves added together: 2Hz, 10Hz, and
+50Hz. I haven't gone so far as to modulate the power of each of the signals,
+which I really should for completeness, but the general solution should still
+be valid.
+</p>
+
+<p>
+The DFTs of the sampled signals show what frequencies are constituent in the
+signals. The green DFT has peaks at each of the three frequencies, as we
+expect for a signal sampled at a crazy high rate. The blue signal is sampled
+at 1Hz, one fourth than that required to capture the slowest parts of the
+signal and so it shows nothing - <b>where did everything go?</b> Finally, we have the
+orange signal, sampled at 10Hz. This is fast enough to capture the slow
+frequency, but nothing above. However, we still see two peaks in this trace,
+the lower of the two corresponds to no frequency in the original signal. <b>Where
+did it come from?</b>
+</p>
+
+<p>
+We have these two questions to answer: why is the lowest rate signal so empty?
+and what is the source of the low frequency peak in the middling rate signal?
+</p>
+
+<p>
+There are three versions of the signal: the "real" signal, sampled at an
+incredibly high rate soas to appear the same as the analogue version, the
+"fast" version, sampled at a rate high enough to capture some, but not all, of
+the signal, and a "slow" version sampled too slowly for any of the constituent
+frequencies to show up.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org408e8b6" class="outline-2">
+<h2 id="org408e8b6">Signal folding</h2>
+<div class="outline-text-2" id="text-org408e8b6">
+<p>
+Imagine the frequency axis of the DFT split into segments of length \(\omega_{nyq} =
+  \frac{1}{2}FS\), where \(FS\) is the sampling rate. If there are parts of the
+signal in segments higher than \(\omega_{nyq}\), these are "folded" down, like a leaflet
+or concertina, into the lower frequencies (see the linked EE Times
+article). Odd numbered segments (where counting starts at zero) are reversed
+and translated to the sampling window, and even numbers are just translated to
+the sampling window. The DFT then shows the sum of all these superimposed
+parts of the signal. This is where the low frequency bump in the middle rate
+signal comes from: the higher frequency is folded down resulting in a
+peak. Another question comes to mind; <b>why is the peak lower?</b>
+</p>
+</div>
+
+<div id="outline-container-orgd4824cd" class="outline-3">
+<h3 id="orgd4824cd">Signal energy</h3>
+<div class="outline-text-3" id="text-orgd4824cd">
+<p>
+Going back to <a href="https://en.wikipedia.org/wiki/Spectral_density">Wikipedia (Spectral density)</a> for a second, let's look at the
+energy of the signal at high frequencies vs low frequencies.
+</p>
+
+<p>
+\[S(f) = \left|\hat{x}(f)\right|^2\]
+</p>
+
+<p>
+I have a feeling that smushing a high frequency signal down into lower
+frequencies results in a lower energy response at the new smushed frequency:
+perhaps this is why the peak is small in the mid rate plot.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org776e0ab" class="outline-2">
+<h2 id="org776e0ab">Recovering data</h2>
+<div class="outline-text-2" id="text-org776e0ab">
+<p>
+Now we have a model in our head about how undersampling affects the resulting
+signal. We can think about undoing this effect to recover something like the
+original signal. Let's look at a dataseries I've collected:
+</p>
+
+<center><img src="/_images/blog_aliasing.png" /></center>
+
+<p>
+The experiment involves shearing a fluid in a Couette cell, the specifics
+aren't important here, other than the fact that something is <i>rotating</i> with a
+<i>rate</i> (frequency). Measurement of speed is made by a pair of optical
+encoders, and stress measurement by loadcell. The expected spectrum contains a
+peak at rotation frequency (marked by dashed vertical line), and perhaps a
+peak at 50Hz for AC power supply. Other than those two, there should be
+nothing but what the fluid creates. This fluid is glycerol, which is
+sufficiently boring so nothing complex should happen when shearing it.
+</p>
+
+<p>
+The signal is sampled here at around \(80\rm Hz\). This should be sufficient to
+record all aspects of a signal where we expect the fastest signal to be
+~\(10\rm Hz\), however with a possible signal at \(50\rm Hz\) we may not see
+everything! However, we see nothing at \(50\rm Hz\). There are two peaks
+reflected forwards and back with period \(5 \rm Hz\) (a <i>period</i> of \(\rm Hz\) - that's
+weird to say!).
+</p>
+
+<p>
+I need to have a wee think about what this means&#x2026;
+</p>
+
+<p>
+The mechanical instability in the apparatus contributes a "wobble" to the
+results. I had taken this to present with a frequency of the rotation rate,
+however perhaps the timescale is more like on the glycerol's relaxation time
+(on the order of \(50 \rm ms\), or \(200 \rm Hz\)). This would be a signa entirely
+to quick to read and it would get smushed back - perhaps resulting in these
+reflections.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgdd7b632" class="outline-2">
+<h2 id="orgdd7b632">Sources</h2>
+<div class="outline-text-2" id="text-orgdd7b632">
+<ul class="org-ul">
+<li><a href="https://en.wikipedia.org/wiki/Digital_signal_processing">Wikipedia (Digital signal procesing)</a> is always a good first step.</li>
+<li><a href="https://books.google.co.uk/books?hl=en&amp;lr=&amp;id=YJlRoOOfeksC&amp;oi=fnd&amp;pg=PP1&amp;dq=digital+signal+processing+lai&amp;ots=87oSJJucy9&amp;sig=F_tFEXTzAuEti33sabit8u7fakA&amp;redir_esc=y#v=onepage&amp;q=digital%20signal%20processing%20lai&amp;f=false">Practical Digital Signal Processing</a> by Edmund Lai is a good intro to signal processing.</li>
+<li><a href="https://dsp.stackexchange.com/questions/54537/what-is-the-difference-between-undersampling-and-oversampling-in-analog-to-digit">Digital Signal Processing Stack Exchange</a> - a decent post on this topic.</li>
+<li><a href="https://www.eetimes.com/how-to-use-undersampling/#">EE Times article</a> - an excellent visuals of what undersampling does to a signal.</li>
+</ul>
+</div>
+</div>

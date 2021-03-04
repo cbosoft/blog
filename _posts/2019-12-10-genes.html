@@ -1,0 +1,279 @@
+---
+layout: post
+title: Genetic Algorithms are cool
+excerpt: "I've been looking at using a genetic algorithm to perform symbolic function fitting. In this post I introduce the topic (as I understand it) and outline my use-case."
+---
+
+<div id="outline-container-org3511291" class="outline-2">
+<h2 id="org3511291">Introduction</h2>
+<div class="outline-text-2" id="text-org3511291">
+<p>
+Genetic Algorithms are a method of optimizing a function by a process similar
+to that of evolution. In nature creatures have genes which effect traits which
+then cause them to be successfull organisms, or not. The successful organisms
+survive, and their genes are passed on. Similarly, we can generate a
+<i>population</i> of solutions to a problem, decide which are successful (which of
+them are <i>fit</i>) and then combine the successful solutions into a second
+<i>generation</i>.
+</p>
+
+<p>
+I'm interested in using a Lisp to perform function fitting: an unknown
+function is performed on an input dataseries \(x\), resulting in \(y\). The
+function could be recovered by trying different functions \(f(x)\) until the
+results match. In Lisp, functions are data and this problem becomes just
+correctly building up a list out of building blocks (operations).
+</p>
+
+<p>
+So in the interest of shoe-horning anything ML into a project, I'm gonna use a
+genetic algorithm to perform this function fitting.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org929afb6" class="outline-2">
+<h2 id="org929afb6">The Algorithm</h2>
+<div class="outline-text-2" id="text-org929afb6">
+<p>
+Some definitions:
+</p>
+<dl class="org-dl">
+<dt>Gene</dt><dd><code>-&gt;</code> Basic building block which can combine together (add,
+subtract, multiply, divide, integrate, differentiate)</dd>
+<dt>Organism</dt><dd><code>-&gt;</code> Collection of genes together (a function)</dd>
+<dt>Fitness score</dt><dd><code>-&gt;</code> How well does the organism perform?</dd>
+<dt>Reproduction</dt><dd><code>-&gt;</code> Organisms are combined to give a (hopefully) more
+successfull offspring.</dd>
+<dt>Population</dt><dd><code>-&gt;</code> A collection of different organisms which compete to reproduce.</dd>
+<dt>Mutation</dt><dd><code>-&gt;</code> When an organism reproduces, there is a chance a gene will
+activate/change independant of parent genetics.</dd>
+</dl>
+
+<p>
+Let's start with a sketch of the process:
+</p>
+<center>
+  <img src="{{ site.images_dir }}/ga_sketch.svg"/>
+</center>
+
+<p>
+We have a bunch of genes (different genes represented by different colours
+here), which can combine together into an organism, and a bunch of organisms
+together forms a population. The population is assessed according to their
+fitness, and the most fit organisms are allowed to reproduce. The next
+generation is therefore more fit. The process is repeated until the population
+is at maximum fitness (i.e. the search has converged on a solution).
+</p>
+
+<p>
+The general algorithm is:
+</p>
+<ol class="org-ol">
+<li><b>START</b>: start with an initial population of a variety of organisms.</li>
+<li><b>FITNESS</b>: assess fitness of population.</li>
+<li><b>SELECTION</b>: pair up successful members of population for reproduction.</li>
+<li><b>REPRODUCTION</b>: combine pairs to give offspring (the new generation).</li>
+<li><b>MUTATION</b>: mutate offspring.</li>
+<li><b>REPEAT</b>: <code>GOTO 2</code></li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-org96f608d" class="outline-2">
+<h2 id="org96f608d">General Problem</h2>
+<div class="outline-text-2" id="text-org96f608d">
+<p>
+Suppose we have a function \(f(x)\) that we can measure. We have a sample of
+output \(y\), and the respective input \(x\). We want to know the form of
+\(f(x)\). Functional form is often know for problems like this: so the problem
+reduces to finding the correct set of coefficients and we can employ methods
+like linear regression and stochastic optimisation to solve them. However, if
+the function is unknown, then the problem remains complex. We could guess the
+form and update our guess based upon the result and iterate until we get a
+<i>good enough</i> result.
+</p>
+
+<p>
+This is okay if the functional form is easy enough to guess, but what if the
+function is difficult to discern? A neural network can be used to observe
+patterns, but the mysterious meaning of the resulting weights of the
+perceptrons may not mean anything to the reader. We can employ a similar
+mechanism to a neural network, except instead of changing the weights of
+combining perceptrons/neurons, we're changing the form of the pattern
+function.
+</p>
+
+<p>
+Using the genetic algorithm gives us a good way to decide how to perform the
+update ("these functions performed well, let's keep them and work on it from
+there.").
+</p>
+</div>
+</div>
+
+<div id="outline-container-org283e001" class="outline-2">
+<h2 id="org283e001">General Solution</h2>
+<div class="outline-text-2" id="text-org283e001">
+<p>
+GA in the context of the function solver:
+</p>
+<ol class="org-ol">
+<li><b>START</b>: generate a <i>large</i> set of functions of <i>random</i> operations.</li>
+<li><b>FITNESS</b>: find the most successful functions (which ones have the
+smallest residual error).</li>
+<li><b>SELECTION</b>: pair up successful functions, taking the top n% of organisms.</li>
+<li><b>REPRODUCTION</b>: common operations in successful functions are taken into
+offspring along with a random subset of the uncommon operations.</li>
+<li><b>MUTATION</b>: there will be some (low, non-zero) chance for each offspring
+to mutate, and each gene will have a mutation chance associated. If
+mutation of a gene is selected, the operation is changed in some way
+including the selected mutation.</li>
+</ol>
+</div>
+
+<div id="outline-container-orgc27e76b" class="outline-3">
+<h3 id="orgc27e76b">Fitness</h3>
+<div class="outline-text-3" id="text-orgc27e76b">
+<p>
+Let's start with something a bit tangible: fitness. We need to decide on a
+good method for judging the fitness of an "organism". In the context of the
+symbolic function fitter, this fitness is how well the function recreates the
+expected output &#x2013; simply an error function. Let \(y(x)\) be our function,
+\(y_{expected}\) is out expected result given the input series \(x\), and \(y_{model}\)
+is the result given by our model function (the "organism") the error could be
+defined simply as:
+</p>
+
+<p>
+\[ \varepsilon = y_{expected} - y_{model}\]
+</p>
+
+<p>
+or we can weight it against the expectation, and square it so large errors
+are punished:
+</p>
+
+<p>
+\[ \varepsilon = {\left(\frac{y_{expected} - y_{model}}{y_{expected}}\right)}^2\]
+</p>
+
+<p>
+Either way we end up with a measure of how well the function recreates the
+expectation &#x2013; the <i>fitness</i> of our organism.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org4c81b90" class="outline-3">
+<h3 id="org4c81b90">Selection</h3>
+<div class="outline-text-3" id="text-org4c81b90">
+<p>
+Now that we have an idea of good/bad organisms, we can decide which ones to
+take forward into the next generation. This is a very important step. We want
+to take enough genes forward that we have sufficient diversity to create the
+solution, but we don't want to just take everything forward or we won't
+converge. This step is sometimes also called "Elitism" - only the best move
+forward.
+</p>
+
+<p>
+We need to decide on a cut off on who to move forward. I reckon \(10\%\) is a
+good number, and I've seen others use this amount, and it can always be tuned
+later. So the top \(10\%\) of the population will move up to the next level.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgcc5698e" class="outline-3">
+<h3 id="orgcc5698e">Reproduction</h3>
+<div class="outline-text-3" id="text-orgcc5698e">
+<p>
+Organisms selected for reproduction can now transfer their genes and create
+the next generation. We can pair of the organisms and create offspring from
+the pairs. 
+</p>
+
+<p>
+<b>What happens to the old generation?</b> 
+</p>
+
+<p>
+If the old generation are cleared after reproduction, we lose a lot of
+genetic information, and the population will rapidly die unless the organisms
+are allowed to produce multiple offspring.
+</p>
+
+<p>
+If the old generation persist and reproduction adds new organisms every time,
+the population rapidly grows and convergence is never met. Let's call this <b>rising
+population reproduction</b>.
+</p>
+
+<p>
+We could clear a small amount of the old generation (small, but larger than
+the added amount from reproduction). Thus we have a slowly declining
+population which will end in convergence, but not until sufficient
+generations have passed to allow a good solution to be found. Let's call this
+<b>falling population reproduction</b>
+</p>
+
+<p>
+Finally, we could ensure reproduction and death are matched. The top \(10\%\)
+reproduce to form an additional \(10\%\), which is matched by the bottom \(10\%\)
+dying off. This will ensure the population will slowly improve towards a
+soltuion, which can be improved by increasing the number of generations. This
+method we'll call <b>constant population reproduction</b>.
+</p>
+
+<p>
+A reproduction will take two organisms to produce an offspring. We can take
+the common parts of the organisms and put them directly into the offspring,
+and randomly choose from the individual (non-common) genes.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orga8ce32e" class="outline-3">
+<h3 id="orga8ce32e">Mutation</h3>
+<div class="outline-text-3" id="text-orga8ce32e">
+<p>
+Again, there are many different ways we can take this. Individual genes can
+mutate, depending on their form (<code>add-coefficient</code> could be mutated by
+changing <code>coefficient</code>) or new genes could be added, old genes
+removed. That's three possibilities. Each reproduction will have the
+possibility of one of these happening
+</p>
+</div>
+</div>
+
+<div id="outline-container-org3f7e971" class="outline-3">
+<h3 id="org3f7e971">Initial population</h3>
+<div class="outline-text-3" id="text-org3f7e971">
+<p>
+Finally, let's talk about the start. We need to start (innoculate) our petri
+dish with enough genetic diversity to ensure convergence on a good solution
+(especially if falling population reproduction is used). If a constant or
+rising population is maintained, we can still get a good answer so long as
+the population is allowed to mutate.
+</p>
+
+<p>
+The population <i>complexity</i> (how many genes to an organism) should start high
+enough to encapture the solution, but no to high so as to overshoot the
+solution. Perhaps it would be best to start at minimal complexity (only four
+or five genes) and turn up the gene mutation probability.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0416d33" class="outline-2">
+<h2 id="org0416d33">Sources</h2>
+<div class="outline-text-2" id="text-org0416d33">
+<ul class="org-ul">
+<li>This <a href="https://towardsdatascience.com/introduction-to-genetic-algorithms-including-example-code-e396e98d8bf3">article</a> has a good intro to genetic algorithms.</li>
+<li>Another good run-down <a href="https://www.geeksforgeeks.org/genetic-algorithms/">article</a> from GeeksforGeeks.</li>
+</ul>
+</div>
+</div>

@@ -1,0 +1,517 @@
+---
+title: "Into the Apple System Management Controller"
+excerpt: "Apple's SMC is the interface between the sensors on a mac and the OS, however this API is private and not publicly documented. Here's my journey into the various forum posts and other efforts which have uncovered the secrets of the SMC."
+layout: post
+---
+
+<div id="outline-container-orga7dd640" class="outline-2">
+<h2 id="orga7dd640">System Management Controller</h2>
+<div class="outline-text-2" id="text-orga7dd640">
+<p>
+Apple use a kernel extension called AppleSMC.kext to store information about a
+mac, including CPU temperatures, fan speeds, battery status, and so
+on. Accessing this data can be tough. There are a couple open efforts out
+there to provide APIs for the SMC: notably beltex's SMC controller which is
+pretty recent (last update in 2017):
+</p>
+
+<ul class="org-ul">
+<li><a href="https://github.com/beltex/SMCKit">https://github.com/beltex/SMCKit</a></li>
+<li><a href="https://github.com/beltex/libsmc">https://github.com/beltex/libsmc</a></li>
+</ul>
+
+<p>
+Other open source programs use SMC in order to display fan or temperature
+information:
+</p>
+
+<ul class="org-ul">
+<li><a href="https://github.com/hholtmann/smcFanControl">https://github.com/hholtmann/smcFanControl</a></li>
+<li><a href="https://github.com/lavoiesl/osx-cpu-temp">https://github.com/lavoiesl/osx-cpu-temp</a></li>
+</ul>
+
+<p>
+I'll document here a simple <code>c</code> implementation, the <code>C++</code> or <code>Swift</code> versions aren't
+much different.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgdc7c46e" class="outline-2">
+<h2 id="orgdc7c46e">Accessing the SMC</h2>
+<div class="outline-text-2" id="text-orgdc7c46e">
+<p>
+Okay. I'm very new to the whole macOS architecture. I've got background in
+linux, and I once ran a FreeBSD vm, but that's as close as I've come to
+hacking around in macOS (until now) so please forgive me if I muck up the
+terminology a wee bit.
+</p>
+
+<p>
+To access the SMC, you need to first access the SMC IO service, using the
+IOKit Framework. As I understand is, a Framework is Apple-speak for a
+library. Include the header, and load the service:
+</p>
+
+{% highlight c %}
+#include <stdlib.h>
+#include <stdio.h>
+#include <IOKit/IOKitLib.h>
+
+
+int main()
+{
+  io_service_t service = IOServiceGetMatchingService(kIOMasterPortDefault,
+                                                     IOServiceMatching("AppleSMC"));
+
+  if (!service) {
+    fprintf(stderr, "Error loading IOService for AppleSMC\n");
+    exit(1);
+  }
+
+  // do something with service here
+
+  IOObjectRelease(service);
+}
+{% endhighlight %}
+
+<p>
+We've also checked that the service is returned properly (should be non-zero)
+and then released it after we're done with it.
+</p>
+
+<p>
+Next, we need to ask the service for a connection to the SMC, so we flesh out
+the part in the middle:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">io_connect_t</span> <span style="color: #d8d8d8; font-weight: bold;">conn</span>;
+
+<span style="color: #6272a4;">// </span><span style="color: #6272a4;">Open SMC and check return value</span>
+<span style="color: #ff79c6; font-weight: bold;">if</span> (<span style="color: #4484AC;">!</span>IOServiceOpen(service, mach_task_self(), 0, &amp;conn)) {
+
+  <span style="color: #6272a4;">// </span><span style="color: #6272a4;">Do something with SMC here</span>
+
+  <span style="color: #6272a4;">// </span><span style="color: #6272a4;">Close SMC</span>
+  <span style="color: #ff79c6; font-weight: bold;">if</span> (IOServiceClose(this-&gt;conn)) {
+    fprintf(<span style="color: #f1fa8c;">"Error closing SMC connection\n"</span>);
+  }
+
+}
+<span style="color: #ff79c6; font-weight: bold;">else</span> {
+  fprintf(<span style="color: #f1fa8c;">"Failed to open SMC connection.\n"</span>);
+}
+
+</pre>
+</div>
+
+<p>
+Here, the service loads a connection to the SMC, and we check that it was
+loaded properly.
+</p>
+
+<p>
+Now we have a connection! How to interact with it? 🤔
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org53fb982" class="outline-2">
+<h2 id="org53fb982">Communicating with the Machine</h2>
+<div class="outline-text-2" id="text-org53fb982">
+<p>
+The SMC communicates by passing in structs to ask it for something, and it
+replies with another of the same struct. Hard work has been done by others to
+uncover the nature of this struct, which was unveiled in a piece of the Apple
+PowerManagement source code. From Beltex's libsmc:
+</p>
+
+<pre class="example">
+/**
+Defined by AppleSMC.kext.
+
+This is the predefined struct that must be passed to communicate with the
+AppleSMC driver. While the driver is closed source, the definition of this
+struct happened to appear in the Apple PowerManagement project at around
+version 211, and soon after disappeared. It can be seen in the PrivateLib.c
+file under pmconfigd.
+
+https://www.opensource.apple.com/source/PowerManagement/PowerManagement-211/
+*/
+</pre>
+
+<p>
+So we define the structs as follows:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #ff79c6; font-weight: bold;">typedef</span> <span style="color: #ff79c6; font-weight: bold;">struct</span> {
+    <span style="color: #bd93f9;">unsigned</span> <span style="color: #bd93f9;">char</span>  <span style="color: #d8d8d8; font-weight: bold;">major</span>;
+    <span style="color: #bd93f9;">unsigned</span> <span style="color: #bd93f9;">char</span>  <span style="color: #d8d8d8; font-weight: bold;">minor</span>;
+    <span style="color: #bd93f9;">unsigned</span> <span style="color: #bd93f9;">char</span>  <span style="color: #d8d8d8; font-weight: bold;">build</span>;
+    <span style="color: #bd93f9;">unsigned</span> <span style="color: #bd93f9;">char</span>  <span style="color: #d8d8d8; font-weight: bold;">reserved</span>;
+    <span style="color: #bd93f9;">unsigned</span> <span style="color: #bd93f9;">short</span> <span style="color: #d8d8d8; font-weight: bold;">release</span>;
+} <span style="color: #bd93f9;">SMCVersion</span>;
+
+
+<span style="color: #ff79c6; font-weight: bold;">typedef</span> <span style="color: #ff79c6; font-weight: bold;">struct</span> {
+    <span style="color: #bd93f9;">uint16_t</span> <span style="color: #d8d8d8; font-weight: bold;">version</span>;
+    <span style="color: #bd93f9;">uint16_t</span> <span style="color: #d8d8d8; font-weight: bold;">length</span>;
+    <span style="color: #bd93f9;">uint32_t</span> <span style="color: #d8d8d8; font-weight: bold;">cpuPLimit</span>;
+    <span style="color: #bd93f9;">uint32_t</span> <span style="color: #d8d8d8; font-weight: bold;">gpuPLimit</span>;
+    <span style="color: #bd93f9;">uint32_t</span> <span style="color: #d8d8d8; font-weight: bold;">memPLimit</span>;
+} <span style="color: #bd93f9;">SMCPLimitData</span>;
+
+
+<span style="color: #6272a4;">// </span><span style="color: #6272a4;">Struct containing information about the SMC key requested</span>
+<span style="color: #ff79c6; font-weight: bold;">typedef</span> <span style="color: #ff79c6; font-weight: bold;">struct</span> {
+    <span style="color: #bd93f9;">IOByteCount</span> <span style="color: #d8d8d8; font-weight: bold;">dataSize</span>;
+    <span style="color: #bd93f9;">uint32_t</span>    <span style="color: #d8d8d8; font-weight: bold;">dataType</span>;
+    <span style="color: #bd93f9;">uint8_t</span>     <span style="color: #d8d8d8; font-weight: bold;">dataAttributes</span>;
+} <span style="color: #bd93f9;">SMCKeyInfoData</span>;
+
+
+<span style="color: #6272a4;">// </span><span style="color: #6272a4;">Struct passed in to/out from the SMC.</span>
+<span style="color: #ff79c6; font-weight: bold;">typedef</span> <span style="color: #ff79c6; font-weight: bold;">struct</span> {
+    <span style="color: #bd93f9;">uint32_t</span>       <span style="color: #d8d8d8; font-weight: bold;">key</span>;
+    <span style="color: #bd93f9;">SMCVersion</span>     <span style="color: #d8d8d8; font-weight: bold;">vers</span>;
+    <span style="color: #bd93f9;">SMCPLimitData</span>  <span style="color: #d8d8d8; font-weight: bold;">pLimitData</span>;
+    <span style="color: #bd93f9;">SMCKeyInfoData</span> <span style="color: #d8d8d8; font-weight: bold;">keyInfo</span>;
+    <span style="color: #bd93f9;">uint8_t</span>        <span style="color: #d8d8d8; font-weight: bold;">result</span>;
+    <span style="color: #bd93f9;">uint8_t</span>        <span style="color: #d8d8d8; font-weight: bold;">status</span>;
+    <span style="color: #bd93f9;">uint8_t</span>        <span style="color: #d8d8d8; font-weight: bold;">data8</span>;
+    <span style="color: #bd93f9;">uint32_t</span>       <span style="color: #d8d8d8; font-weight: bold;">data32</span>;
+    <span style="color: #bd93f9;">uint8_t</span>        <span style="color: #d8d8d8; font-weight: bold;">bytes</span>[32];
+} <span style="color: #bd93f9;">SMCParamStruct</span>;
+</pre>
+</div>
+
+<p>
+This last one is the main struct that contains all the information for the SMC
+to give us what we want. Most of it is pretty self explanatory. 
+</p>
+
+<p>
+I just want to note that the <code>key</code> is a four character code in 8bit ascii,
+re-expressed as a 32 bit unsigned integer. We can write simple to/from
+conversion functions:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">uint32_t</span> <span style="color: #39CE29; font-weight: bold;">key_to_uint</span>(<span style="color: #bd93f9;">char</span> *<span style="color: #d8d8d8; font-weight: bold;">key</span>)
+{
+  <span style="color: #bd93f9;">uint32_t</span> <span style="color: #d8d8d8; font-weight: bold;">rv</span> = 0;
+  rv += key[0] &lt;&lt; 24;
+  rv += key[1] &lt;&lt; 16;
+  rv += key[2] &lt;&lt; 8;
+  rv += key[3];
+  <span style="color: #ff79c6; font-weight: bold;">return</span> rv;
+}
+
+<span style="color: #bd93f9;">void</span> <span style="color: #39CE29; font-weight: bold;">key_to_char</span>(<span style="color: #bd93f9;">uint32_t</span> <span style="color: #d8d8d8; font-weight: bold;">key</span>, <span style="color: #bd93f9;">char</span> *<span style="color: #d8d8d8; font-weight: bold;">rv</span>)
+{
+  rv[0] = key &gt;&gt; 24;
+  rv[1] = (key &gt;&gt; 16) &amp; 0xff;
+  rv[2] = (key &gt;&gt; 8) &amp; 0xff;
+  rv[3] = key &amp; 0xff;
+}
+</pre>
+</div>
+
+<p>
+These functions make assumptions about the char arrays passed to them: that
+they are blocks of memory at least 4 chars in size which is a bit
+dangerous. It would be best to check to be safe, perhaps using `strlen`.
+</p>
+
+<p>
+A final piece of the puzzle are the interacting specifiers or selectors: we
+need to tell the SMC what it is that we want.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #ff79c6; font-weight: bold;">typedef</span> <span style="color: #ff79c6; font-weight: bold;">enum</span> {
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCUserClientOpen</span>  = 0,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCUserClientClose</span> = 1,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCHandleYPCEvent</span>  = 2,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCReadKey</span>         = 5,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCWriteKey</span>        = 6,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCGetKeyCount</span>     = 7,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCGetKeyFromIndex</span> = 8,
+    <span style="color: #d8d8d8; font-weight: bold;">kSMCGetKeyInfo</span>      = 9
+} <span style="color: #bd93f9;">selector_t</span>;
+</pre>
+</div>
+
+<p>
+The three important ones for us here are <code>kSMCGetKeyInfo</code>, <code>kSMCReadKey</code>,
+<code>kSMCWriteKey</code>.
+</p>
+
+<p>
+We have out envelope, now we need to fill it, and send it away. (I mean, we
+need to make a call to the SMC and pass in out input struct, and receive a
+filled out output struct.)
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c">
+<span style="color: #bd93f9;">SMCParamStruct</span> <span style="color: #d8d8d8; font-weight: bold;">in_struct</span> = {0}, <span style="color: #d8d8d8; font-weight: bold;">out_struct</span> = {0};
+
+in_struct.key = key_to_uint(<span style="color: #f1fa8c;">"TC0P"</span>);
+in_struct.data8 = kSMCGetKeyInfo;
+
+<span style="color: #bd93f9;">size_t</span> <span style="color: #d8d8d8; font-weight: bold;">s</span> = <span style="color: #ff79c6; font-weight: bold;">sizeof</span>(SMCParamStruct);
+<span style="color: #bd93f9;">kern_return_t</span> <span style="color: #d8d8d8; font-weight: bold;">result</span> = IOConnectCallStructMethod(conn,
+                                                 kSMCHandleYPCEvent,
+                                                 &amp;input_struct,
+                                                 s,
+                                                 &amp;output_struct,
+                                                 &amp;s);
+
+<span style="color: #ff79c6; font-weight: bold;">if</span> (<span style="color: #4484AC;">!</span>result) {
+  <span style="color: #ff79c6; font-weight: bold;">if</span> (<span style="color: #4484AC;">!</span>output_struct.result) {
+
+    <span style="color: #6272a4;">// </span><span style="color: #6272a4;">next part goes here</span>
+
+  }
+  <span style="color: #ff79c6; font-weight: bold;">else</span> {
+    fprintf(stderr, <span style="color: #f1fa8c;">"Call to SMC failed.\n"</span>);
+  }
+}
+<span style="color: #ff79c6; font-weight: bold;">else</span> {
+  fprintf(stderr, <span style="color: #f1fa8c;">"Call to SMC failed.\n"</span>);
+}
+</pre>
+</div>
+
+<p>
+In this simple call, the SMC is asked for information about the key
+"TC0P". This key gets the Temperature for CPU0, in its Proximity. Other keys
+include "F0Ac" - Actual speed of Fan 0, and "BATP" - battery power level in
+percent. Take these with a pinch of salt: Apple changes the keys about adding
+new ones and dropping old. You can poll your system for keys by trying loads
+of combinations of four characters and seeing what sticks, or look at dumps
+obtained by others and posted online (an <a href="https://github.com/acidanthera/VirtualSMC/tree/master/Docs/SMCDumps">example</a>).
+</p>
+
+<p>
+With that key info we verify that we have the right key, and we find out the
+format it is stored in. SMC data are stored in a 32 byte array, but its exact
+format can vary. Is the data a float or int? is it a fixed point? Is it a
+UInt16? 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org11e1ac6" class="outline-2">
+<h2 id="org11e1ac6">Decoding the data</h2>
+<div class="outline-text-2" id="text-org11e1ac6">
+<p>
+This is given in the <code>SMCKeyInfoData</code> struct in the <code>dataType</code>
+member. As with key, this is a four character code written as a long unsigned
+int, so we can decode it using the function we wrote earlier.
+</p>
+
+<p>
+As with the keys, the data types change too. Common types are the "fpe2",
+"sp78", "flt ", and "ui8 " types. Note the spaces in the last two.
+</p>
+</div>
+
+<div id="outline-container-orge35da35" class="outline-3">
+<h3 id="orge35da35">fpe2 and sp78</h3>
+<div class="outline-text-3" id="text-orge35da35">
+<p>
+FPE, I think, stands for fixed point exponent 2. The data is unsigned, and is
+2 bytes long. The last two bits are reserved for fractional data. (<a href="https://stackoverflow.com/questions/22160746/fpe2-and-sp78-data-types">source</a>.)
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">double</span> <span style="color: #39CE29; font-weight: bold;">from_fpe2</span>(<span style="color: #bd93f9;">uint8_t</span> *<span style="color: #d8d8d8; font-weight: bold;">data</span>)
+{
+  <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">value</span> = (data[0] &lt;&lt; 6) + (data[1] &gt;&gt; 2);
+  <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">fraction</span> = data[1] &amp; 3;
+
+  <span style="color: #ff79c6; font-weight: bold;">return</span> double_from_val_frac(value, fraction, 2);
+}
+</pre>
+</div>
+
+<p>
+We can write another function to convert the value/fraction pair into a
+double:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">double</span> <span style="color: #39CE29; font-weight: bold;">double_from_val_frac</span>(<span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">value</span>, <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">fraction</span>, <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">n</span>)
+{
+  <span style="color: #bd93f9;">double</span> <span style="color: #d8d8d8; font-weight: bold;">rv</span> = (<span style="color: #bd93f9;">double</span>)value;
+
+  <span style="color: #bd93f9;">double</span> <span style="color: #d8d8d8; font-weight: bold;">running_fraction</span> = 0.5;
+
+  <span style="color: #6272a4;">// </span><span style="color: #6272a4;">check each individual bit in fraction, is set, add another</span>
+  <span style="color: #6272a4;">// </span><span style="color: #6272a4;">fraction onto the return value rv</span>
+  <span style="color: #ff79c6; font-weight: bold;">for</span> (<span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">shift</span> = n-1; shift &gt;= 0; shift--) {
+    <span style="color: #ff79c6; font-weight: bold;">if</span> ((fraction &gt;&gt; shift) &amp; 1) {
+      rv += running_fraction;
+    }
+
+    running_fraction /= 2.0;
+  }
+
+  <span style="color: #ff79c6; font-weight: bold;">return</span> rv;
+}
+</pre>
+</div>
+
+<p>
+I am certain there is a better way to do this, however this is what I came up
+with and it works well enough.
+</p>
+
+<p>
+SP78 is very similar, but it is signed, and there are 8 fractional bits
+instead of only 2:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">double</span> <span style="color: #39CE29; font-weight: bold;">from_sp78</span>(<span style="color: #bd93f9;">uint8_t</span> *<span style="color: #d8d8d8; font-weight: bold;">data</span>)
+{
+  <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">sign</span> = (data[0] &gt;&gt; 7) ? -1 : 1;
+  <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">value</span> = sign * (data[0] &amp; 0x7f);
+  <span style="color: #bd93f9;">int</span> <span style="color: #d8d8d8; font-weight: bold;">fraction</span> = data[1];
+
+  <span style="color: #ff79c6; font-weight: bold;">return</span> double_from_val_frac(value, fraction, 8);
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org18f0e42" class="outline-3">
+<h3 id="org18f0e42">flt_</h3>
+<div class="outline-text-3" id="text-org18f0e42">
+<p>
+flt_ is quite simple: a single precision floating point over four bytes. This
+is the same float as used by the processor, so we don't even need to do the conversion!
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">double</span> <span style="color: #39CE29; font-weight: bold;">from_flt_</span>(<span style="color: #bd93f9;">uint8_t</span> *<span style="color: #d8d8d8; font-weight: bold;">data</span>)
+{
+  <span style="color: #6272a4;">// </span><span style="color: #6272a4;">cast data to a pointer to float, and deref</span>
+  <span style="color: #bd93f9;">float</span> <span style="color: #d8d8d8; font-weight: bold;">f</span> = *(<span style="color: #bd93f9;">float</span>*)data;
+  <span style="color: #ff79c6; font-weight: bold;">return</span> (<span style="color: #bd93f9;">double</span>)f;
+}
+</pre>
+</div>
+
+<p>
+It looks horrible, but it works!
+</p>
+</div>
+</div>
+
+<div id="outline-container-org5de3690" class="outline-3">
+<h3 id="org5de3690">ui8_</h3>
+<div class="outline-text-3" id="text-org5de3690">
+<p>
+Finally, there's ui8, which is a unsigned int in a single byte. This is again
+trivial to convert:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #bd93f9;">uint8_t</span> <span style="color: #39CE29; font-weight: bold;">from_ui8_</span>(<span style="color: #bd93f9;">uint8_t</span> *<span style="color: #d8d8d8; font-weight: bold;">data</span>)
+{
+  <span style="color: #ff79c6; font-weight: bold;">return</span> data[0];
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org4414efe" class="outline-2">
+<h2 id="org4414efe">Measuring CPU Temperature</h2>
+<div class="outline-text-2" id="text-org4414efe">
+<p>
+We've almost done something useful! We've got the key data for our desired key
+of "TC0P" - CPU temperature. This should be a "flt " - or it was for me. Other
+people have reported "sp78" for temperatures. Your mileage may vary on this.
+</p>
+
+<p>
+Whatever your SMC says the data type is, we can now get the value of the key
+using a successive call to the SMC:
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-c">
+<span style="color: #bd93f9;">uint32_t</span> <span style="color: #d8d8d8; font-weight: bold;">type</span> = out_struct.keyInfo.dataType;
+
+in_struct.keyInfo.dataSize = out_struct.keyInfo.dataSize;
+in_struct.data8 = kSMCReadKey;
+
+s = <span style="color: #ff79c6; font-weight: bold;">sizeof</span>(SMCParamStruct);
+result = IOConnectCallStructMethod(conn,
+                                   kSMCHandleYPCEvent,
+                                   &amp;input_struct,
+                                   s,
+                                   &amp;output_struct,
+                                   &amp;s);
+
+<span style="color: #ff79c6; font-weight: bold;">if</span> (<span style="color: #4484AC;">!</span>result) {
+  <span style="color: #ff79c6; font-weight: bold;">if</span> (<span style="color: #4484AC;">!</span>output_struct.result) {
+
+    <span style="color: #bd93f9;">double</span> <span style="color: #d8d8d8; font-weight: bold;">temperature</span> = from_flt_(out_struct.bytes);
+    fprintf(stdout, <span style="color: #f1fa8c;">"CPU Proximity temperature %f&#186;C"</span>, temperature);
+
+  }
+  <span style="color: #ff79c6; font-weight: bold;">else</span> {
+    fprintf(stderr, <span style="color: #f1fa8c;">"Call to SMC Read failed.\n"</span>);
+  }
+}
+<span style="color: #ff79c6; font-weight: bold;">else</span> {
+  fprintf(stderr, <span style="color: #f1fa8c;">"Call to SMC Read failed.\n"</span>);
+}
+</pre>
+</div>
+
+<p>
+And that's reading! There's a similar process for writing, just with a
+different key in the input param, and you set the <code>in_param.bytes</code> member as
+the payload for the write operation.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge954308" class="outline-2">
+<h2 id="orge954308">Conclusion</h2>
+<div class="outline-text-2" id="text-orge954308">
+<p>
+Now that was a very brief intro to the SMC, with some resources dotted
+about. The program above has not been tested or run, and it would be a mess to
+write out in full. I have a better implementation in <code>C++</code> on <a href="https://github.com/cbosoft/libsmcpp">github</a>, or
+there's beltex's <code>c</code> or <code>Swift</code> versions linked at the top of this post.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgdccb006" class="outline-2">
+<h2 id="orgdccb006">Resources</h2>
+<div class="outline-text-2" id="text-orgdccb006">
+<p>
+Some relevant information:
+</p>
+<ul class="org-ul">
+<li><a href="https://en.wikipedia.org/wiki/System_Management_Controller">SMC on Wikipedia</a></li>
+<li><a href="https://www.insanelymac.com/forum/topic/328814-smc-keys-knowledge-database/">InsanelyMac forum post on SMC Keys</a></li>
+<li><a href="https://github.com/acidanthera/VirtualSMC/blob/master/Docs/SMCKeys.txt">Documented list of SMC Keys</a></li>
+<li><a href="https://stackoverflow.com/questions/22160746/fpe2-and-sp78-data-types">Stackoverflow post about sp78 and fpe2 types</a></li>
+</ul>
+</div>
+</div>

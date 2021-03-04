@@ -1,0 +1,177 @@
+---
+layout: post
+title: "crisp - A(nother) LISP Interpreter. Part 2: Objects and Parsing"
+tag: lisp interpreter crisp
+excerpt: How can a lisp function be represented in terms of data?
+desc: In this post I talk about how lisp functions are data, how that can be made to be true, and how a list of tokens can be parsed into AST.
+---
+
+<div id="outline-container-orgbc7daf3" class="outline-2">
+<h2 id="orgbc7daf3">Intro</h2>
+<div class="outline-text-2" id="text-orgbc7daf3">
+<p>
+This is my second post about <a href="https://github.com/cbosoft/lisp-interpreter">crisp</a>, my (WIP) lisp interpreter. My first post
+(introduction, tokenisation) can be found <a href="2019-11-21-lisp-interpreter.html">here</a>.
+</p>
+
+<p>
+As of the end of the last post, we have a tokenisation function which takes a
+string and chunks it into important bits of syntax: parens, atoms, and
+symbols. Next, we need to transform this list into a tree describing the flow
+of data through the program, as a lisp interpreter would see it: the <b>Abstract
+Syntax Tree</b>. In lisp, this is rather straight forward as the syntax enforces
+a tree-like structure, so we can also directly execute this AST as a tree of
+lisp data and functions.
+</p>
+
+<p>
+In this post I will show my version of a lisp parser which takes the tokens
+and transforms into AST. The AST nodes will actually be lisp data itself which
+can be directly evaluated. The form of the node presents our first problem:
+how should lisp data be represented (in our <code>c</code> backend)?
+</p>
+
+<p>
+The next task is forming the tree (composed of lisp data nodes) from the
+tokens, correctly fitting data into lists and sub-lists.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org508c588" class="outline-2">
+<h2 id="org508c588">Representing lisp data in <code>c</code></h2>
+<div class="outline-text-2" id="text-org508c588">
+<p>
+Our lisp data can be represented as an object which can be an atom (-&gt; value),
+a symbol (-&gt; a variable, which evals to an atom/value), or a list. <code>c</code> has no
+object form, but it does have structures and linked lists. We can create a
+list as a singly linked list, so that each element in the list points to the
+object it holds and to the next element in the list.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">struct</span> <span style="color: #569cd6;">LispListElement</span> {
+  <span style="color: #569cd6;">LispObject</span> *<span style="color: #fff;">value</span>;
+  <span style="color: #569cd6;">LispListElement</span> *<span style="color: #fff;">next</span>;
+};
+</pre>
+</div>
+
+<p>
+The object then contains the data, whether that is another list, an atomistic
+value, or a symbol. This is another struct:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">struct</span> <span style="color: #569cd6;">LispObject</span> {
+  <span style="color: #569cd6;">LispAtom</span> *<span style="color: #fff;">value_atom</span>;
+  <span style="color: #569cd6;">char</span> *<span style="color: #fff;">value_symbol</span>;
+  <span style="color: #569cd6;">LispListElement</span> *<span style="color: #fff;">value_list</span>;
+};
+</pre>
+</div>
+
+<p>
+Then, the atom. A lisp atom is either a number or a string. Numbers are
+floating point or integer which complicates matters, but they should be freely
+inter-convertible.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">struct</span> <span style="color: #569cd6;">LispAtom</span> {
+  <span style="color: #569cd6;">double</span> <span style="color: #fff;">value_float</span>;
+  <span style="color: #569cd6;">long</span> <span style="color: #fff;">value_int</span>;
+  <span style="color: #569cd6;">char</span> *<span style="color: #fff;">value_string</span>;
+};
+</pre>
+</div>
+
+<p>
+This is the start of my "types.h" file, a header containing information on
+each type.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgec49946" class="outline-2">
+<h2 id="orgec49946">Parsing a list of tokens into a tree</h2>
+<div class="outline-text-2" id="text-orgec49946">
+<p>
+Taking the list of tokens and converting to a tree is actually very
+simple. In <code>c</code>, this mostly comes down to an accounting problem. We
+need a stack to hold the open lists, and we need to either count
+items in a list, or vary the size of lists as we add them. We're
+using singly linked lists; so we can grow or shrink at will. The
+stack we can implement as a dyamic array, resized as we add lists to
+the stack.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;stdlib.h&gt;</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;stdio.h&gt;</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;string.h&gt;</span>
+
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"parse.h"</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"ast.h"</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"object.h"</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"exception.h"</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"debug.h"</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"list.h"</span>
+
+
+
+<span style="color: #569cd6;">LispListElement</span> *<span style="color: #dcdcaa;">parse</span>(<span style="color: #569cd6;">char</span> **<span style="color: #fff;">tokens</span>, <span style="color: #569cd6;">int</span> <span style="color: #fff;">n_tokens</span>)
+{
+  <span style="color: #569cd6;">LispListElement</span> *<span style="color: #fff;">root</span> = LispList_new_element();
+  <span style="color: #569cd6;">LispObject</span> *<span style="color: #fff;">current_list</span> = <span style="color: #569cd6;">NULL</span>, *<span style="color: #fff;">new</span> = <span style="color: #569cd6;">NULL</span>, **<span style="color: #fff;">open_lists</span>= <span style="color: #569cd6;">NULL</span>;
+  <span style="color: #569cd6;">int</span> <span style="color: #fff;">n_open_lists</span> = 0;
+
+  <span style="color: #9cdcfe;">for</span> (<span style="color: #569cd6;">int</span> <span style="color: #fff;">i</span> = 0; i &lt; n_tokens; i++) {
+
+    <span style="color: #9cdcfe;">if</span> (strcmp(tokens[i], <span style="color: #7cb461;">"("</span>) == 0) {
+      new = LispObject_new_list();
+
+      <span style="color: #9cdcfe;">if</span> (current_list != <span style="color: #569cd6;">NULL</span>) {
+        open_lists = realloc(open_lists, (++n_open_lists)*<span style="color: #9cdcfe;">sizeof</span>(<span style="color: #569cd6;">LispObject</span> *));
+        open_lists[n_open_lists-1] = current_list;
+        LispList_add_object_to_list(current_list-&gt;value_list, new);
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        LispList_add_object_to_list(root, new);
+      }
+
+      current_list = new;
+    }
+    <span style="color: #9cdcfe;">else</span> <span style="color: #9cdcfe;">if</span> (strcmp(tokens[i], <span style="color: #7cb461;">")"</span>) == 0) {
+
+      <span style="color: #9cdcfe;">if</span> (n_open_lists) {
+        current_list = open_lists[(--n_open_lists)];
+        open_lists = realloc(open_lists, <span style="color: #569cd6;">n_open_lists</span>*<span style="color: #9cdcfe;">sizeof</span>(<span style="color: #569cd6;">LispObject</span> *));
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        current_list = <span style="color: #569cd6;">NULL</span>;
+        open_lists = <span style="color: #569cd6;">NULL</span>;
+      }
+
+    }
+    <span style="color: #9cdcfe;">else</span> {
+      new = LispObject_new_guess_type(tokens[i]);
+
+      <span style="color: #9cdcfe;">if</span> (current_list != <span style="color: #569cd6;">NULL</span>) {
+        LispList_add_object_to_list(current_list-&gt;value_list, new);
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        LispList_add_object_to_list(root, new);
+      }
+    }
+
+  }
+
+  free(open_lists);
+  <span style="color: #9cdcfe;">return</span> root;
+}
+
+</pre>
+</div>
+</div>
+</div>

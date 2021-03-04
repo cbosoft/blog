@@ -1,0 +1,1372 @@
+---
+title: "Python's stretchy integers."
+excerpt: One of the awesome things about Python are the indefinitely sized numbers (Long and Decimal) which allow arbitrary precision in calculation. In this post I explore Python's Long implementation, and I write a simple "Big Integer" in <code>C++</code>.
+layout: post
+---
+
+
+<div id="outline-container-orga20e0d9" class="outline-2">
+<h2 id="orga20e0d9">Big Numbers</h2>
+<div class="outline-text-2" id="text-orga20e0d9">
+<p>
+In Python, you can do maths with arbitrarily large numbers:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python">2 ** 100 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">= 1267650600228229401496703205376</span>
+</pre>
+</div>
+
+<p>
+The above is perfectly vaild and will not overflow, despite the maximum value
+of a 32bit unsigned integer of <code>9223372036854775807</code>. This is a really cool
+bit of functionality which I've been wanting to include in my <a href="https://github.com/cbosoft/lisp-interpreter">lisp
+interpreter</a>. Let's see how Python does it.
+</p>
+
+<p>
+This functionality was introduced to Python in <a href="https://www.python.org/dev/peps/pep-0237/">PEP 237</a>: "Unifying Long
+Integers and Integers". In the PEP, the implementation is brushed upon: Python
+<code>Ints</code> are abstractions over internal <code>long</code> types and <code>bignums</code>; a <code>bignum</code>
+being an array/vector of short ints representing arbitrary length
+integers. 
+</p>
+
+<p>
+Cool! That sounds pretty simple actually. An array of integers: just need to
+write functions describing how to do maths with these stretchy ints, how to
+compare them, how to convert them to strings, and how to convert a string to a
+stretchy int. Hmmm not quite simple, but doable.
+</p>
+
+<p>
+The hardest parts, I think, will be the interconversion between a <code>bignumn</code>
+and <code>string</code> representations. The maths and comparison should be relatively
+easy to do, probably just needing a brush up of binary maths algorithms.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgb732ec7" class="outline-2">
+<h2 id="orgb732ec7">Searching for the source</h2>
+<div class="outline-text-2" id="text-orgb732ec7">
+<p>
+Looking at the cPython relevant source code (<a href="https://github.com/python/cpython/blob/master/Objects/longobject.c">longobject.c</a> <a href="https://github.com/python/cpython/blob/master/Include/longobject.h">longobject.h</a>
+<a href="https://github.com/python/cpython/blob/master/Include/longintrepr.h">longintrepr.h</a>), we can get some detail about the implementation. The last
+header is where the meat of the structure is:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">struct</span> <span style="color: #569cd6;">_longobject</span> {
+    PyObject_VAR_HEAD
+    <span style="color: #569cd6;">digit</span> <span style="color: #fff;">ob_digit</span>[1];
+};
+</pre>
+</div>
+
+<p>
+And that's it. 
+</p>
+
+<p>
+A digit is the smallest increment of memory the long uses, and can either be
+a "normal" 32-bit integer, or a short int (16-bit). There are limitations of
+the algorithms used to do maths with the resulting long object that prevent
+smaller digits, in fact the algorithms require either 30 or 15 bits in a
+digit. 
+</p>
+
+<p>
+The object is a "<code>PyObject_VAR_HEAD</code>", which means it has a variable size (as
+the digit array can be grown or shrunk). The macro "<code>Py_SIZE</code>" is used to
+return the size of a variable-sized Python object, which in this case would
+return the number of digits. However, this macro is also used to store the
+sign of a long object. It is common throughout the source to see things like
+<code>if (Py_SIZE(z) &lt;0) { ...</code> which doesn't make sense upon first look, but using
+the size member to store the sign is a pretty clever wait to do it, using a
+separate variable would be a waste of memory.
+</p>
+
+<p>
+Also defined in <code>longintrepr.h</code> are:
+</p>
+
+<dl class="org-dl">
+<dt><code>PyLong_SHIFT</code></dt><dd>the number of bits to shift by (30 or 15)</dd>
+<dt><code>_PyLong_DECIMAL_SHIFT</code></dt><dd>shifting a decimal multiplies by 10<sup>what</sup>?</dd>
+<dt><code>_PyLong_DECIMAL_BASE</code></dt><dd>10<sup>_PyLong<sub>DECIMAL</sub><sub>SHIFT</sub></sup></dd>
+<dt><code>PyLong_BASE</code></dt><dd>as for decimal, but for binary: 2<sup>shift</sup></dd>
+<dt><code>PyLong_MASK</code></dt><dd><code>PyLong_BASE</code> - 1</dd>
+</dl>
+
+<p>
+Now we can look into the implementation <code>longobject.c</code> file, and see how data
+is handled.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd4bc66d" class="outline-2">
+<h2 id="orgd4bc66d">1 + 1 = ?</h2>
+<div class="outline-text-2" id="text-orgd4bc66d">
+<p>
+Let's start with addition:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">PyObject</span> *
+<span style="color: #dcdcaa;">long_add</span>(<span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">a</span>, <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">b</span>)
+{
+    <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">z</span>;
+
+    CHECK_BINOP(a, b);
+
+    <span style="color: #9cdcfe;">if</span> (Py_ABS(Py_SIZE(a)) &lt;= 1 &amp;&amp; Py_ABS(Py_SIZE(b)) &lt;= 1) {
+        <span style="color: #9cdcfe;">return</span> PyLong_FromLong(MEDIUM_VALUE(a) + MEDIUM_VALUE(b));
+    }
+    <span style="color: #9cdcfe;">if</span> (Py_SIZE(a) &lt; 0) {
+        <span style="color: #9cdcfe;">if</span> (Py_SIZE(b) &lt; 0) {
+            z = x_add(a, b);
+            <span style="color: #9cdcfe;">if</span> (z != <span style="color: #569cd6;">NULL</span>) {
+                <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">x_add received at least one multiple-digit int,</span>
+<span style="color: #5C6370;">                   and thus z must be a multiple-digit int.</span>
+<span style="color: #5C6370;">                   That also means z is not an element of</span>
+<span style="color: #5C6370;">                   small_ints, so negating it in-place is safe. </span><span style="color: #5C6370;">*/</span>
+                assert(Py_REFCNT(z) == 1);
+                Py_SIZE(z) = -(Py_SIZE(z));
+            }
+        }
+        <span style="color: #9cdcfe;">else</span>
+            z = x_sub(b, a);
+    }
+    <span style="color: #9cdcfe;">else</span> {
+        <span style="color: #9cdcfe;">if</span> (Py_SIZE(b) &lt; 0)
+            z = x_sub(a, b);
+        <span style="color: #9cdcfe;">else</span>
+            z = x_add(a, b);
+    }
+    <span style="color: #9cdcfe;">return</span> (<span style="color: #569cd6;">PyObject</span> *)z;
+}
+</pre>
+</div>
+
+<p>
+This function looks at the values of the operands, <code>a</code> and <code>b</code>. Why they
+couldn't have chosen semi-descriptive names, I don't know. It checks if <code>a</code>
+and <code>b</code> either span more than a digit, and if not it adds them together
+directly, returning a new <code>PyLong</code>. Otherwise, call the function <code>x_add</code> (or
+<code>x_sub</code>) on the operands. Let's follow the trail:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Add the absolute values of two integers. </span><span style="color: #5C6370;">*/</span>
+
+<span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">PyLongObject</span> *
+<span style="color: #dcdcaa;">x_add</span>(<span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">a</span>, <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">b</span>)
+{
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">size_a</span> = Py_ABS(Py_SIZE(a)), <span style="color: #fff;">size_b</span> = Py_ABS(Py_SIZE(b));
+    <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">z</span>;
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">i</span>;
+    <span style="color: #569cd6;">digit</span> <span style="color: #fff;">carry</span> = 0;
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Ensure a is the larger of the two: </span><span style="color: #5C6370;">*/</span>
+    <span style="color: #9cdcfe;">if</span> (size_a &lt; size_b) {
+        { <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">temp</span> = a; a = b; b = temp; }
+        { <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">size_temp</span> = size_a;
+            size_a = size_b;
+            size_b = size_temp; }
+    }
+    z = _PyLong_New(size_a+1);
+    <span style="color: #9cdcfe;">if</span> (z == <span style="color: #569cd6;">NULL</span>)
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+    <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_b; ++i) {
+        carry += a-&gt;ob_digit[i] + b-&gt;ob_digit[i];
+        z-&gt;ob_digit[i] = carry &amp; PyLong_MASK;
+        carry &gt;&gt;= PyLong_SHIFT;
+    }
+    <span style="color: #9cdcfe;">for</span> (; i &lt; size_a; ++i) {
+        carry += a-&gt;ob_digit[i];
+        z-&gt;ob_digit[i] = carry &amp; PyLong_MASK;
+        carry &gt;&gt;= PyLong_SHIFT;
+    }
+    z-&gt;ob_digit[i] = carry;
+    <span style="color: #9cdcfe;">return</span> long_normalize(z);
+}
+</pre>
+</div>
+
+<p>
+This function takes two unsigned numbers and adds them. The first wee part is
+getting ready to do the addition (ensuring <code>a &gt; b</code>, allocating result <code>z</code>),
+the meat of the function starts with the first loop:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_b; ++i) {
+    carry += a-&gt;ob_digit[i] + b-&gt;ob_digit[i];
+    z-&gt;ob_digit[i] = carry &amp; PyLong_MASK;
+    carry &gt;&gt;= PyLong_SHIFT;
+}
+</pre>
+</div>
+
+<p>
+As a digit is <code>int16_t</code> or <code>int32_t</code>, but the shift is <code>15</code> or <code>30</code>, there is
+guaranteed to be enough room in a digit to store the addition of two digits,
+so a digit is sufficient for the <code>carry</code>. Starting from the smallest digit,
+digits of the operands are added with the result in <code>carry</code>, this is masked
+and stored in the result and the carry is right-shifted so it contains the
+carry relevant for the next digits.
+</p>
+
+<p>
+This is fairly straightforward, but here's a wee run-through. Lets make the
+digit size 4 (2<sup>4</sup> = 16) with a shift of 3 and let's add 40 and 20:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #5C6370;"># </span><span style="color: #5C6370;">40 -&gt; 0b10 1000</span>
+<span style="color: #5C6370;"># </span><span style="color: #5C6370;">20 -&gt; 0b010100</span>
+<span style="color: #fff;">a</span> = [8, 2]
+<span style="color: #fff;">b</span> = [4, 1]
+<span style="color: #fff;">z</span> = [0, 0, 0]
+<span style="color: #fff;">carry</span> = 0
+<span style="color: #fff;">mask</span> = 15 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">= 0b1111</span>
+<span style="color: #fff;">shift</span> = 4
+
+<span style="color: #5C6370;"># </span><span style="color: #5C6370;">first iteration</span>
+<span style="color: #fff;">carry</span> = carry + a[0] + b[0] <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0 + 8 + 4 = 12</span>
+<span style="color: #fff;">z</span>[0] = carry &amp; mask <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b1100 &amp; 0b1111 -&gt; 0b1100 -&gt; 12</span>
+<span style="color: #fff;">carry</span> = carry &gt;&gt; shift <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+
+<span style="color: #5C6370;"># </span><span style="color: #5C6370;">second iteration</span>
+<span style="color: #fff;">carry</span> = carry + a[1] + b[1] <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0 + 2 + 1 = 3</span>
+<span style="color: #fff;">z</span>[1] = carry &amp; mask <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b0011 &amp; 0b1111 -&gt; 0b0011 -&gt; 3</span>
+<span style="color: #fff;">carry</span> = carry &gt;&gt; shift <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+
+<span style="color: #fff;">z</span>[2] = carry
+
+<span style="color: #5C6370;">#</span><span style="color: #5C6370;">z = [12, 3, 0] -&gt; 12 + 3*(2**shift) + 0 -&gt; 60</span>
+
+</pre>
+</div>
+
+<p>
+Cool! The two loops work doing the same thing. The first loop adds up pairs of
+digits from <code>a</code> and <code>b</code>, and as <code>a</code> is the larger array of digits, the second
+loop carrys the <code>carry</code> up for the rest of a. Finally, the carry at the end is
+put into the final digit of the result which is normalised (leading zeroes
+removed) and returned. 
+</p>
+
+<p>
+So this process adds two multi-byte <b>unsigned</b> integers. To add negative numbers
+and so on, the process is wrapped in another function to check the signs of
+the operands, if they are both positive, or both negative, the above process
+is valid. Otherwise, we need something else&#x2026;
+</p>
+
+<p>
+&#x2026; subtraction.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org4db4763" class="outline-2">
+<h2 id="org4db4763">3 - 1 = ?</h2>
+<div class="outline-text-2" id="text-org4db4763">
+<p>
+Again, let's start with the raw subtraction function:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Subtract the absolute values of two integers. </span><span style="color: #5C6370;">*/</span>
+
+<span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">PyLongObject</span> *
+<span style="color: #dcdcaa;">x_sub</span>(<span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">a</span>, <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">b</span>)
+{
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">size_a</span> = Py_ABS(Py_SIZE(a)), <span style="color: #fff;">size_b</span> = Py_ABS(Py_SIZE(b));
+    <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">z</span>;
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">i</span>;
+    <span style="color: #569cd6;">int</span> <span style="color: #fff;">sign</span> = 1;
+    <span style="color: #569cd6;">digit</span> <span style="color: #fff;">borrow</span> = 0;
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Ensure a is the larger of the two: </span><span style="color: #5C6370;">*/</span>
+    <span style="color: #9cdcfe;">if</span> (size_a &lt; size_b) {
+        sign = -1;
+        { <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">temp</span> = a; a = b; b = temp; }
+        { <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">size_temp</span> = size_a;
+            size_a = size_b;
+            size_b = size_temp; }
+    }
+    <span style="color: #9cdcfe;">else</span> <span style="color: #9cdcfe;">if</span> (size_a == size_b) {
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Find highest digit where a and b differ: </span><span style="color: #5C6370;">*/</span>
+        i = size_a;
+        <span style="color: #9cdcfe;">while</span> (--i &gt;= 0 &amp;&amp; a-&gt;ob_digit[i] == b-&gt;ob_digit[i])
+            ;
+        <span style="color: #9cdcfe;">if</span> (i &lt; 0)
+            <span style="color: #9cdcfe;">return</span> (<span style="color: #569cd6;">PyLongObject</span> *)PyLong_FromLong(0);
+        <span style="color: #9cdcfe;">if</span> (a-&gt;ob_digit[i] &lt; b-&gt;ob_digit[i]) {
+            sign = -1;
+            { <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">temp</span> = a; a = b; b = temp; }
+        }
+        size_a = size_b = i+1;
+    }
+    z = _PyLong_New(size_a);
+    <span style="color: #9cdcfe;">if</span> (z == <span style="color: #569cd6;">NULL</span>)
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+    <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_b; ++i) {
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">The following assumes unsigned arithmetic</span>
+<span style="color: #5C6370;">           works module 2**N for some N&gt;PyLong_SHIFT. </span><span style="color: #5C6370;">*/</span>
+        borrow = a-&gt;ob_digit[i] - b-&gt;ob_digit[i] - borrow;
+        z-&gt;ob_digit[i] = borrow &amp; PyLong_MASK;
+        borrow &gt;&gt;= PyLong_SHIFT;
+        borrow &amp;= 1; <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Keep only one sign bit </span><span style="color: #5C6370;">*/</span>
+    }
+    <span style="color: #9cdcfe;">for</span> (; i &lt; size_a; ++i) {
+        borrow = a-&gt;ob_digit[i] - borrow;
+        z-&gt;ob_digit[i] = borrow &amp; PyLong_MASK;
+        borrow &gt;&gt;= PyLong_SHIFT;
+        borrow &amp;= 1; <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Keep only one sign bit </span><span style="color: #5C6370;">*/</span>
+    }
+    assert(borrow == 0);
+    <span style="color: #9cdcfe;">if</span> (sign &lt; 0) {
+        Py_SIZE(z) = -Py_SIZE(z);
+    }
+    <span style="color: #9cdcfe;">return</span> maybe_small_long(long_normalize(z));
+}
+</pre>
+</div>
+
+<p>
+There's not much more to this func as there was in the previous: the main part
+of it is, again, from the first <code>for</code> loop:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_b; ++i) {
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">The following assumes unsigned arithmetic</span>
+<span style="color: #5C6370;">       works module 2**N for some N&gt;PyLong_SHIFT. </span><span style="color: #5C6370;">*/</span>
+    borrow = a-&gt;ob_digit[i] - b-&gt;ob_digit[i] - borrow;
+    z-&gt;ob_digit[i] = borrow &amp; PyLong_MASK;
+    borrow &gt;&gt;= PyLong_SHIFT;
+    borrow &amp;= 1; <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Keep only one sign bit </span><span style="color: #5C6370;">*/</span>
+}
+</pre>
+</div>
+
+<p>
+Borrow is a digit, which is big enough to hold the value of any operation
+between two other digits of size <code>PyLong_SHIFT</code>, initially zero. In that first
+line, borrow stores the result of the subtraction, which is then masked and
+stored in the result on the next line. <code>borrow</code> is then shifted. So far, this
+is all the same as in addition, except the operation has changed to '-' and
+'carry' to 'borrow'. Hmm but what about that last line? And what does that
+comment about unsigned arithmetic mean?
+</p>
+
+<p>
+By right-shifting borrow, all that's left is a digit representing whether&#x2026;
+</p>
+
+<p>
+Let's look at a pseudo-code run through of this process. We'll use the 4-bit
+digit as before, and let's subtract 20 from 30:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #fff;">a</span> = [14, 1] <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0001 1110 -&gt; 30</span>
+<span style="color: #fff;">b</span> = [4, 1]  <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0001 0100 -&gt; 20</span>
+<span style="color: #fff;">shift</span> = 4
+<span style="color: #fff;">mask</span> = 0b111
+
+<span style="color: #fff;">result</span> = [0, 0, 0]
+<span style="color: #fff;">borrow</span> = 0
+
+<span style="color: #fff;">borrow</span> = a[0] - b[0] - borrow <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 14 - 4 - 0 -&gt; 10</span>
+<span style="color: #fff;">result</span>[0] = borrow &amp; mask <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b1010 &amp; 0b1111 -&gt; 0b1010 -&gt; 10</span>
+<span style="color: #fff;">borrow</span> = borrow &gt;&gt; shift <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+<span style="color: #fff;">borrow</span> &amp;= 1 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+
+<span style="color: #fff;">borrow</span> = a[1] - b[1] - borrow <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 1 - 1 - 0 -&gt; 0</span>
+<span style="color: #fff;">result</span>[1] = borrow &amp; mask <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b0000 &amp; 0b1111 -&gt; 0b0000 -&gt; 0</span>
+<span style="color: #fff;">borrow</span> = borrow &gt;&gt; shift <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+<span style="color: #fff;">borrow</span> &amp;= 1 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+
+<span style="color: #9cdcfe;">assert</span> borrow == 0 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">after all this, borrow should be zero</span>
+
+<span style="color: #5C6370;"># </span><span style="color: #5C6370;">result = 0b1010 -&gt; 10</span>
+</pre>
+</div>
+
+<p>
+Okay cool, making sense so far. What if we introduce a situation in which we
+need to use the borrow? Let's subtract 30 from 36:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #fff;">a</span> = [4, 2] <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0010 1110 -&gt; 36</span>
+<span style="color: #fff;">b</span> = [14, 1]  <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0001 1110 -&gt; 30</span>
+<span style="color: #fff;">shift</span> = 4
+<span style="color: #fff;">mask</span> = 0b111
+
+<span style="color: #fff;">result</span> = [0, 0]
+<span style="color: #fff;">borrow</span> = 0
+
+<span style="color: #fff;">borrow</span> = a[0] - b[0] - borrow <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 4 - 14 - 0 -&gt; -10 -&gt; 0b11110110 (!)</span>
+<span style="color: #fff;">result</span>[0] = borrow &amp; mask <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b11110110 &amp; 0b1111 -&gt; 0b0110 -&gt; 6</span>
+<span style="color: #fff;">borrow</span> = borrow &gt;&gt; shift <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b11110110 &gt;&gt; 4 -&gt; 0b1111</span>
+<span style="color: #fff;">borrow</span> &amp;= 1 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 1</span>
+
+<span style="color: #fff;">borrow</span> = a[0] - b[0] - borrow <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 2 - 1 - 1 -&gt; 0</span>
+<span style="color: #fff;">result</span>[1] = borrow &amp; mask <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b0000 &amp; 0b1111 -&gt; 0b0000 -&gt; 0</span>
+<span style="color: #fff;">borrow</span> = borrow &gt;&gt; shift <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0b0000 &gt;&gt; 4 -&gt; 0</span>
+<span style="color: #fff;">borrow</span> &amp;= 1 <span style="color: #5C6370;"># </span><span style="color: #5C6370;">-&gt; 0</span>
+
+<span style="color: #5C6370;"># </span><span style="color: #5C6370;">result = 0b0110 -&gt; 6</span>
+</pre>
+</div>
+
+<p>
+Ahh! It's two's complement! A negative number represented in binary two's
+complement is essentially MAX-number, so an 8-bit number (0-255) is
+255-number. The <code>borrow &amp;= 1</code> checks to see if there is a <code>1</code> in the position
+above the digit base, if there is then the result of the subtraction was
+negative and a unit needs to be <b>borrowed</b> from the next digit.
+</p>
+
+<p>
+Two operations down, three to go!
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgee1ca9e" class="outline-2">
+<h2 id="orgee1ca9e">1 * 2 = ?</h2>
+<div class="outline-text-2" id="text-orgee1ca9e">
+<p>
+All right. Let's step it up a notch: multiplication.
+</p>
+
+<p>
+In the code, it can be seen there are two algorithms in use for multiplication
+of multi-digit numbers. There's the "grade school" multiplication method, and
+the <a href="https://en.wikipedia.org/wiki/Karatsuba_algorithm">Karatsuba algorithm</a>.
+</p>
+
+<p>
+Let's just tackle the grade school method for now, I may come back to the
+Karatsuba algorithm (when I get my head around it!) The gradeschool algorithm
+has a small efficiency boost in that equal values (squaring) halves the number
+of multiplications necessary. We'll ignore this speed up for now, and
+concentrate on multiplication alone:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Grade school multiplication, ignoring the signs.</span>
+<span style="color: #5C6370;"> * Returns the absolute value of the product, or NULL if error.</span>
+<span style="color: #5C6370;"> </span><span style="color: #5C6370;">*/</span>
+<span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">PyLongObject</span> *
+<span style="color: #dcdcaa;">x_mul</span>(<span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">a</span>, <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">b</span>)
+{
+    <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">z</span>;
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">size_a</span> = Py_ABS(Py_SIZE(a));
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">size_b</span> = Py_ABS(Py_SIZE(b));
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">i</span>, <span style="color: #fff;">iz</span>, <span style="color: #fff;">ib</span>, <span style="color: #fff;">bend</span>;
+
+    z = _PyLong_New(size_a + size_b);
+    <span style="color: #9cdcfe;">if</span> (z == <span style="color: #569cd6;">NULL</span>)
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+
+    memset(z-&gt;ob_digit, 0, Py_SIZE(z) * <span style="color: #9cdcfe;">sizeof</span>(digit));
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">removed: same-value multiplication case </span><span style="color: #5C6370;">*/</span>
+
+    <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_a; ++i) {
+        <span style="color: #569cd6;">twodigits</span> <span style="color: #fff;">carry</span> = 0;
+        <span style="color: #569cd6;">twodigits</span> <span style="color: #fff;">f</span> = a-&gt;ob_digit[i];
+        iz = i;  <span style="color: #5C6370;">//</span><span style="color: #5C6370;">digit *pz = z-&gt;ob_digit + i;</span>
+        ib = 0;  <span style="color: #5C6370;">//</span><span style="color: #5C6370;">digit *pb = b-&gt;ob_digit;</span>
+        <span style="color: #5C6370;">//</span><span style="color: #5C6370;">digit *pbend = b-&gt;ob_digit + size_b;</span>
+
+        SIGCHECK({
+                Py_DECREF(z);
+                <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+            });
+
+        <span style="color: #5C6370;">//</span><span style="color: #5C6370;">while (pb &lt; pbend) {</span>
+        <span style="color: #9cdcfe;">while</span> (ib &lt; bend) {
+            carry += z-&gt;ob_digit[iz] + b-&gt;ob_digits[ib++] * f;
+            z-&gt;ob_digit[iz++] = (digit)(carry &amp; PyLong_MASK);
+            carry &gt;&gt;= PyLong_SHIFT;
+            assert(carry &lt;= PyLong_MASK);
+        }
+        <span style="color: #9cdcfe;">if</span> (carry)
+            z-&gt;ob_digit[iz] += (digit)(carry &amp; PyLong_MASK);
+        assert((carry &gt;&gt; PyLong_SHIFT) == 0);
+    }
+    <span style="color: #9cdcfe;">return</span> long_normalize(z);
+}
+</pre>
+</div>
+
+<p>
+Note: in the source, they use pointers to values in the digit array. I have
+converted this to indices and get[] operations (leaving the original in as
+comments).
+</p>
+
+<p>
+So this algorithm, now we've stripped out all the tough bits, is fairly
+simple: each digit in the larger number (<code>a</code>) multiplies each digit in the
+smaller number (<code>b</code>). The carry is a bit larger than in addition and
+subtraction, but other than that its a similar process with the operations
+switched to <code>*</code>.
+</p>
+
+<p>
+What's next?
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgabd0f74" class="outline-2">
+<h2 id="orgabd0f74">4 / 2 = ?</h2>
+<div class="outline-text-2" id="text-orgabd0f74">
+</div>
+<div id="outline-container-org06f229f" class="outline-3">
+<h3 id="org06f229f">Algorithm D (Division of nonnegative integers).</h3>
+<div class="outline-text-3" id="text-org06f229f">
+<p>
+Ahh, division. Division is done via a "divide and modulo" function
+<code>long_divmod</code>, the output is given by out parameters passed to the function,
+so we can take two outputs from the func (either the quotient, or the
+modulo). <code>long_divmod</code> actually calls another function, <code>long_divrem</code> which
+calculates quotient and remainder, by calling another function <code>x_divrem</code>:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Unsigned int division with remainder -- the algorithm.  The arguments v1</span>
+<span style="color: #5C6370;">   and w1 should satisfy 2 &lt;= Py_ABS(Py_SIZE(w1)) &lt;= Py_ABS(Py_SIZE(v1)). </span><span style="color: #5C6370;">*/</span>
+
+<span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">PyLongObject</span> *
+<span style="color: #dcdcaa;">x_divrem</span>(<span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">v1</span>, <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">w1</span>, <span style="color: #569cd6;">PyLongObject</span> **<span style="color: #fff;">prem</span>)
+{
+    <span style="color: #569cd6;">PyLongObject</span> *<span style="color: #fff;">v</span>, *<span style="color: #fff;">w</span>, *<span style="color: #fff;">a</span>;
+    <span style="color: #569cd6;">Py_ssize_t</span> <span style="color: #fff;">i</span>, <span style="color: #fff;">k</span>, <span style="color: #fff;">size_v</span>, <span style="color: #fff;">size_w</span>;
+    <span style="color: #569cd6;">int</span> <span style="color: #fff;">d</span>;
+    <span style="color: #569cd6;">digit</span> <span style="color: #fff;">wm1</span>, <span style="color: #fff;">wm2</span>, <span style="color: #fff;">carry</span>, <span style="color: #fff;">q</span>, <span style="color: #fff;">r</span>, <span style="color: #fff;">vtop</span>, *<span style="color: #fff;">v0</span>, *<span style="color: #fff;">vk</span>, *<span style="color: #fff;">w0</span>, *<span style="color: #fff;">ak</span>;
+    <span style="color: #569cd6;">twodigits</span> <span style="color: #fff;">vv</span>;
+    <span style="color: #569cd6;">sdigit</span> <span style="color: #fff;">zhi</span>;
+    <span style="color: #569cd6;">stwodigits</span> <span style="color: #fff;">z</span>;
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">We follow Knuth [The Art of Computer Programming, Vol. 2 (3rd</span>
+<span style="color: #5C6370;">       edn.), section 4.3.1, Algorithm D], except that we don't explicitly</span>
+<span style="color: #5C6370;">       handle the special case when the initial estimate q for a quotient</span>
+<span style="color: #5C6370;">       digit is &gt;= PyLong_BASE: the max value for q is PyLong_BASE+1, and</span>
+<span style="color: #5C6370;">       that won't overflow a digit. </span><span style="color: #5C6370;">*/</span>
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">allocate space; w will also be used to hold the final remainder </span><span style="color: #5C6370;">*/</span>
+    size_v = Py_ABS(Py_SIZE(v1));
+    size_w = Py_ABS(Py_SIZE(w1));
+    assert(size_v &gt;= size_w &amp;&amp; size_w &gt;= 2); <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Assert checks by div() </span><span style="color: #5C6370;">*/</span>
+    v = _PyLong_New(size_v+1);
+    <span style="color: #9cdcfe;">if</span> (v == <span style="color: #569cd6;">NULL</span>) {
+        *prem = <span style="color: #569cd6;">NULL</span>;
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+    }
+    w = _PyLong_New(size_w);
+    <span style="color: #9cdcfe;">if</span> (w == <span style="color: #569cd6;">NULL</span>) {
+        Py_DECREF(v);
+        *prem = <span style="color: #569cd6;">NULL</span>;
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+    }
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">normalize: shift w1 left so that its top digit is &gt;= PyLong_BASE/2.</span>
+<span style="color: #5C6370;">       shift v1 left by the same amount.  Results go into w and v. </span><span style="color: #5C6370;">*/</span>
+    d = PyLong_SHIFT - bits_in_digit(w1-&gt;ob_digit[size_w-1]);
+    carry = v_lshift(w-&gt;ob_digit, w1-&gt;ob_digit, size_w, d);
+    assert(carry == 0);
+    carry = v_lshift(v-&gt;ob_digit, v1-&gt;ob_digit, size_v, d);
+    <span style="color: #9cdcfe;">if</span> (carry != 0 || v-&gt;ob_digit[size_v-1] &gt;= w-&gt;ob_digit[size_w-1]) {
+        v-&gt;ob_digit[size_v] = carry;
+        size_v++;
+    }
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">Now v-&gt;ob_digit[size_v-1] &lt; w-&gt;ob_digit[size_w-1], so quotient has</span>
+<span style="color: #5C6370;">       at most (and usually exactly) k = size_v - size_w digits. </span><span style="color: #5C6370;">*/</span>
+    k = size_v - size_w;
+    assert(k &gt;= 0);
+    a = _PyLong_New(k);
+    <span style="color: #9cdcfe;">if</span> (a == <span style="color: #569cd6;">NULL</span>) {
+        Py_DECREF(w);
+        Py_DECREF(v);
+        *prem = <span style="color: #569cd6;">NULL</span>;
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+    }
+    v0 = v-&gt;ob_digit;
+    w0 = w-&gt;ob_digit;
+    wm1 = w0[size_w-1];
+    wm2 = w0[size_w-2];
+    <span style="color: #9cdcfe;">for</span> (vk = v0+k, ak = a-&gt;ob_digit + k; vk-- &gt; v0;) {
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">inner loop: divide vk[0:size_w+1] by w0[0:size_w], giving</span>
+<span style="color: #5C6370;">           single-digit quotient q, remainder in vk[0:size_w]. </span><span style="color: #5C6370;">*/</span>
+
+        SIGCHECK({
+                Py_DECREF(a);
+                Py_DECREF(w);
+                Py_DECREF(v);
+                *prem = <span style="color: #569cd6;">NULL</span>;
+                <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">NULL</span>;
+            });
+
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">estimate quotient digit q; may overestimate by 1 (rare) </span><span style="color: #5C6370;">*/</span>
+        vtop = vk[size_w];
+        assert(vtop &lt;= wm1);
+        vv = ((<span style="color: #569cd6;">twodigits</span>)vtop &lt;&lt; PyLong_SHIFT) | vk[size_w-1];
+        q = (<span style="color: #569cd6;">digit</span>)(vv / wm1);
+        r = (<span style="color: #569cd6;">digit</span>)(vv - (<span style="color: #569cd6;">twodigits</span>)wm1 * q); <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">r = vv % wm1 </span><span style="color: #5C6370;">*/</span>
+        <span style="color: #9cdcfe;">while</span> ((<span style="color: #569cd6;">twodigits</span>)wm2 * q &gt; (((<span style="color: #569cd6;">twodigits</span>)r &lt;&lt; PyLong_SHIFT)
+                                     | vk[size_w-2])) {
+            --q;
+            r += wm1;
+            <span style="color: #9cdcfe;">if</span> (r &gt;= PyLong_BASE)
+                <span style="color: #9cdcfe;">break</span>;
+        }
+        assert(q &lt;= PyLong_BASE);
+
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">subtract q*w0[0:size_w] from vk[0:size_w+1] </span><span style="color: #5C6370;">*/</span>
+        zhi = 0;
+        <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_w; ++i) {
+            <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">invariants: -PyLong_BASE &lt;= -q &lt;= zhi &lt;= 0;</span>
+<span style="color: #5C6370;">               -PyLong_BASE * q &lt;= z &lt; PyLong_BASE </span><span style="color: #5C6370;">*/</span>
+            z = (<span style="color: #569cd6;">sdigit</span>)vk[i] + zhi -
+                (<span style="color: #569cd6;">stwodigits</span>)<span style="color: #569cd6;">q</span> * (<span style="color: #fff;">stwodigits</span>)w0[i];
+            vk[i] = (<span style="color: #569cd6;">digit</span>)z &amp; PyLong_MASK;
+            zhi = (<span style="color: #569cd6;">sdigit</span>)Py_ARITHMETIC_RIGHT_SHIFT(stwodigits,
+                                                    z, PyLong_SHIFT);
+        }
+
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">add w back if q was too large (this branch taken rarely) </span><span style="color: #5C6370;">*/</span>
+        assert((<span style="color: #569cd6;">sdigit</span>)vtop + zhi == -1 || (<span style="color: #569cd6;">sdigit</span>)vtop + zhi == 0);
+        <span style="color: #9cdcfe;">if</span> ((<span style="color: #569cd6;">sdigit</span>)vtop + zhi &lt; 0) {
+            carry = 0;
+            <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_w; ++i) {
+                carry += vk[i] + w0[i];
+                vk[i] = carry &amp; PyLong_MASK;
+                carry &gt;&gt;= PyLong_SHIFT;
+            }
+            --q;
+        }
+
+        <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">store quotient digit </span><span style="color: #5C6370;">*/</span>
+        assert(q &lt; PyLong_BASE);
+        *--ak = q;
+    }
+
+    <span style="color: #5C6370;">/* </span><span style="color: #5C6370;">unshift remainder; we reuse w to store the result </span><span style="color: #5C6370;">*/</span>
+    carry = v_rshift(w0, v0, size_w, d);
+    assert(carry==0);
+    Py_DECREF(v);
+
+    *prem = long_normalize(w);
+    <span style="color: #9cdcfe;">return</span> long_normalize(a);
+}
+</pre>
+</div>
+
+<p>
+You know any code which includes a citation to Knuth is gonna be something
+special. The citation is to /"The Art of Computer Programming, Volume 2:
+Seminumerical Algorithms, Chapter 4.3: Multiple-Precision Arithmetic,
+Algorithm D"/.  I don't have access to this book (yet, it's on my wish list!),
+so after a bit of searching I found a <a href="http://skanthak.homepage.t-online.de/division.html">website</a> with the algorithm copied
+out. The author of that article adds a definition stage providing detail about
+the variables used in the algorithm:
+</p>
+
+
+<ol class="org-ol">
+<li><b>Define</b>
+<ul class="org-ul">
+<li>Let U be the dividend (or numerator) of m+n "digits", stored in an
+array of m+n elements, one "digit" per element, with the most
+significant "digit" in element U[m+n−1] and the least significant
+"digit" in element U[0];</li>
+<li>Let V be the divisor (or denominator) of n "digits", stored in a second
+array of n elements, with n greater than 1, a non-zero most significant
+"digit" in element V[n−1] and the least significant "digit" in element
+V[0];</li>
+<li>Let B be the base (or radix) of the "digits" (also "limbs", "places" or
+"words"), typically (a power of) a power of 2, with B greater than 1.</li>
+<li>The algorithm computes the quotient Q of m+1 "digits" as (U ⁄ V), and
+the remainder R of n "digits" as U % V, using the following "primitive"
+operations:
+<ol class="org-ol">
+<li>addition or subtraction of two single-digit integers, giving a
+single-digit sum and a carry, or a single-digit difference and a
+borrow;</li>
+<li>"widening" multiplication of two single-digit integers, giving a
+double-digit product;</li>
+<li>"narrowing" division of a double-digit integer by a single-digit
+integer, giving a single-digit quotient and a single-digit remainder.</li>
+</ol></li>
+</ul></li>
+<li><b>Normalize</b>
+<ul class="org-ul">
+<li>Set D to (B − 1) ÷ V[n−1];</li>
+<li>Multiply all "digits" of U and V by D.</li>
+<li>(On a binary computer, choose D to be a power of 2 instead of the value
+provided above; any value of D that results in V[n−1] not less than B ÷
+2 will suffice. If D is greater than 1, the eventual overflow "digit"
+of the dividend U goes into element U[m+n].)</li>
+</ul></li>
+<li><b>Initialize j</b>
+<ul class="org-ul">
+<li>Set the loop counter j to m.</li>
+</ul></li>
+<li><b>Calculate Q′</b>
+<ul class="org-ul">
+<li>Set Q′ to (U[n+j] * B + U[n−1+j]) ÷ V[n−1];</li>
+<li>Set R′ to (U[n+j] * B + U[n−1+j]) % V[n−1];</li>
+<li>Test if Q′ equals B or Q′ * V[n−2] is greater than R′ * B + U[n−2+j];</li>
+<li>If yes, then decrease Q′ by 1, increase R′ by V[n−1], and repeat this
+test while R is less than B.</li>
+</ul></li>
+<li><b>Multiply and subtract</b>
+<ul class="org-ul">
+<li>Replace (U[n+j]U[n−1+j]…U[j]) by (U[n+j]U[n−1+j]…U[j]) − Q′ *
+(V[n−1]…V[1]V[0]).</li>
+<li>(The "digits" (U[n+j]…U[j]) should be kept positive; if the result of
+this step is actually negative, (U[n+j]…U[j]) should be left as the
+true value plus Bn+1, namely as the B’s complement of the true value,
+and a borrow to the left should be remembered.)</li>
+</ul></li>
+<li><b>Test remainder</b>
+<ul class="org-ul">
+<li>Set Q[j] to Q′;</li>
+<li>If the result of step D4 was negative, i.e. the subtraction needed a
+borrow, then proceed with step D6; otherwise proceed with step D7.</li>
+</ul></li>
+<li><b>Add back</b>
+<ul class="org-ul">
+<li>Decrease Q[j] by 1 and add (0V[n−1]…V[1]V[0]) to
+(U[n+j]U[n−1+j]…U[1+j]U[j]).</li>
+<li>(A carry will occur to the left of U[n+j], and it should be ignored
+since it cancels with the borrow that occurred in step D4.)</li>
+</ul></li>
+<li><b>Loop on j</b>
+<ul class="org-ul">
+<li>Decrease j by 1;</li>
+<li>Test if j is not less than 0;</li>
+<li>If yes, go back to step D3.</li>
+</ul></li>
+<li><b>Unnormalize</b>
+<ul class="org-ul">
+<li>Now (Q[m]…Q[1]Q[0]) is the desired quotient Q, and the desired
+remainder R may be obtained by dividing (U[n−1]…U[1]U[0]) by D.</li>
+</ul></li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-org3782982" class="outline-3">
+<h3 id="org3782982">Oooft.</h3>
+<div class="outline-text-3" id="text-org3782982">
+<p>
+Looking through that is pretty intimidating. I have a rudimentary idea of how
+to perform this long division in binary, but arbitrary length integer
+division written out so formally makes my eyes water. I don't want to copy
+code I don't understand, so I won't. I do intend to work towards this, but
+for now I will use my terrible terrible solution (sketched here in <code>python</code>):
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #9cdcfe;">def</span> <span style="color: #dcdcaa;">divrem</span>(dividend, divisor):
+    <span style="color: #fff;">remainder</span> = dividend
+    <span style="color: #fff;">quotient</span> = 0
+
+    <span style="color: #9cdcfe;">while</span> remainder &gt; 0:
+        <span style="color: #fff;">remainder</span> -= divisor
+        <span style="color: #fff;">quotient</span> += 1
+
+    <span style="color: #9cdcfe;">if</span> remainder &lt; 0:
+        <span style="color: #fff;">remainder</span> += divisor
+        <span style="color: #fff;">quotient</span> -= 1
+
+    <span style="color: #9cdcfe;">return</span> quotient, remainder
+</pre>
+</div>
+
+<p>
+As multiplication is repeated addition: integer division is repeated
+subtraction. To implement this, we also need to be able to compare <code>BigNum</code>
+types, at least this is fairly trivial.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgb3f999a" class="outline-2">
+<h2 id="orgb3f999a"><code>C++</code> implementation</h2>
+<div class="outline-text-2" id="text-orgb3f999a">
+<p>
+Right, home stretch! Let's put what we've got together, and <code>C++</code>-ify it a
+bit.
+</p>
+
+<p>
+Here's the header for the <code>BigNum</code> class:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C++"><span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;vector&gt;</span>
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;sstream&gt;</span>
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">Define some types. A 'digit' is the smallest unit of integer: the storage</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">size of each element in the vector representing the big integer. 'twodigits'</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">is as it sounds: a datatype large enough to hold something twice as big as a</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">digit.</span>
+<span style="color: #9cdcfe;">typedef</span> <span style="color: #569cd6;">unsigned</span> <span style="color: #569cd6;">short</span> <span style="color: #569cd6;">digit</span>;
+<span style="color: #9cdcfe;">typedef</span> <span style="color: #569cd6;">unsigned</span> <span style="color: #569cd6;">int</span> <span style="color: #569cd6;">twodigits</span>;
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">DIGIT_SHIFT defines the bit-width of a number in a single digit. So moving</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">from a digit in the LSB position to LSB+1 position left-shifts by DIGIT_SHIFT</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">amount. In the Python implementation, they choose a digit shift of 15 or 30</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">as this allows them to use more complicated algorithms giving performance</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">boosts.</span>
+<span style="color:  #dcdcaa;">#define</span> <span style="color: #fff;">DIGIT_SHIFT</span> 15
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">DIGIT_BASE is the largest number representable by the digit, plus one. If</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">DIGIT_SHIFT was 3, then our base would be 8, the maximum representable number</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">0b111 (decimal 7).</span>
+<span style="color:  #dcdcaa;">#define</span> <span style="color: #fff;">DIGIT_BASE</span> (1&lt;&lt;DIGIT_SHIFT)
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">DIGIT_MASK is the number where all the bits of the digit are one: the larges</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">number representable by the digit.</span>
+<span style="color:  #dcdcaa;">#define</span> <span style="color: #fff;">DIGIT_MASK</span> (DIGIT_BASE-1)
+
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">Some of the algorithms used require the operands to be in order of number of</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">digits. This macro will run function on pointer 'this' and pointer 'other' in</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">varying orders depending on the result of the size comparison stored in</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">variable 'thisbigger'.</span>
+<span style="color:  #dcdcaa;">#define</span> <span style="color: #dcdcaa;">SORTSIZE</span>(<span style="color: #fff;">FUNCTION</span>)\
+  <span style="color: #9cdcfe;">if</span> (thisbigger) {\
+    FUNCTION(<span style="color: #9cdcfe;">this</span>, other);\
+  }\
+  <span style="color: #9cdcfe;">else</span> {\
+    FUNCTION(other, <span style="color: #9cdcfe;">this</span>);\
+  }
+
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">BigNum();</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">BigNum(long number);</span>
+<span style="color: #5C6370;">// </span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">A BigNum represents an Integer accross any number of bytes. Methods used here</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">follow mostly along with that used by the Python developers, simplified as</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">necessary.</span>
+<span style="color: #9cdcfe;">class</span> <span style="color: #569cd6;">BigNum</span> {
+
+<span style="color: #9cdcfe;">private</span>:
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">The integer is describe entirely by this vector of digits, and a sign.</span>
+  <span style="color: #569cd6;">std</span>::<span style="color: #569cd6;">vector</span>&lt;<span style="color: #569cd6;">digit</span>&gt; <span style="color: #fff;">digits</span>;
+  <span style="color: #569cd6;">bool</span> <span style="color: #fff;">negative</span>;
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Class methods described here are defined in add.cpp, subtract.cpp,</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">multiply.cpp, and divide.cpp</span>
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">https://en.wikipedia.org/wiki/Addition#Notation_and_terminology</span>
+  <span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">BigNum</span> <span style="color: #dcdcaa;">add</span> (<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">large_addend</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">small_addend</span>);
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">https://en.wikipedia.org/wiki/Subtraction#Notation_and_terminology</span>
+  <span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">BigNum</span> <span style="color: #dcdcaa;">subtract</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">minuend</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">subtrahend</span>);
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">https://en.wikipedia.org/wiki/Multiplication#Notation_and_terminology</span>
+  <span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">BigNum</span> <span style="color: #dcdcaa;">multiply</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">large_factor</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">small_factor</span>);
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">https://en.wikipedia.org/wiki/Division_(mathematics)#Notation</span>
+  <span style="color: #9cdcfe;">static</span> <span style="color: #569cd6;">void</span> <span style="color: #dcdcaa;">divrem</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">dividend</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">divisor</span>, <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">quotient</span>, <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">remainder</span>);
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">BigNum::normalise();</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Removes leading zeros from the digit vector.</span>
+  <span style="color: #569cd6;">void</span> <span style="color: #dcdcaa;">normalise</span>()
+  {
+    <span style="color: #9cdcfe;">while</span> (<span style="color: #9cdcfe;">this</span>-&gt;digits.back() == 0)
+      <span style="color: #9cdcfe;">this</span>-&gt;digits.pop_back();
+  }
+
+<span style="color: #9cdcfe;">public</span>:
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Default constructor: creates a big number with value '0'.</span>
+  <span style="color: #dcdcaa;">BigNum</span>()
+  {
+    <span style="color: #9cdcfe;">this</span>-&gt;negative = <span style="color: #569cd6;">false</span>;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Initialise constructor: creates a BigNum from the long value given.</span>
+  <span style="color: #dcdcaa;">BigNum</span>(<span style="color: #569cd6;">long</span> <span style="color: #fff;">value</span>)
+  {
+    <span style="color: #9cdcfe;">this</span>-&gt;negative = value &lt; 0;
+    <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;negative) value = -value;
+
+    <span style="color: #569cd6;">long</span> <span style="color: #fff;">carry</span> = value;
+    <span style="color: #9cdcfe;">while</span>(carry) {
+      <span style="color: #9cdcfe;">this</span>-&gt;digits.push_back(<span style="color: #569cd6;">carry</span> &amp; <span style="color: #fff;">DIGIT_MASK</span>);
+      carry = carry &gt;&gt; DIGIT_SHIFT;
+    }
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Initialise constructor: create a BigNum from the string.</span>
+  <span style="color: #dcdcaa;">BigNum</span>(<span style="color: #569cd6;">std</span>::<span style="color: #569cd6;">string</span> <span style="color: #fff;">value</span>); <span style="color: #5C6370;">// </span><span style="color: #5C6370;">TODO</span>
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Addition. This code wraps the unsigned addition function defined in add.cpp</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">and unsigned subtraction in subtract.cpp.  Adding two positive, or two</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">negative numbers, is addition. Adding a positive to a negative, or a</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">negative to a positive, is subtraction.</span>
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">+</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other_ref</span>)
+  {
+    <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">result</span>;
+    <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">other</span> = &amp;other_ref;
+    <span style="color: #569cd6;">bool</span> <span style="color: #fff;">thisbigger</span> = <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs() &gt; other-&gt;get_size_abs();
+    <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;negative) {
+      <span style="color: #9cdcfe;">if</span> (other-&gt;negative) {
+        SORTSIZE(result = <span style="color: #569cd6;">BigNum</span>::add);
+        result.negative = <span style="color: #569cd6;">true</span>;
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        result = <span style="color: #569cd6;">BigNum</span>::subtract(other, <span style="color: #9cdcfe;">this</span>);
+      }
+    }
+    <span style="color: #9cdcfe;">else</span> {
+      <span style="color: #9cdcfe;">if</span> (other-&gt;negative) {
+        result = <span style="color: #569cd6;">BigNum</span>::subtract(<span style="color: #9cdcfe;">this</span>, other);
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        SORTSIZE(result = <span style="color: #569cd6;">BigNum</span>::add);
+      }
+    }
+
+    <span style="color: #9cdcfe;">return</span> result;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Subtraction. Similar to addition above, but a negation operation is applied</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">to the right hand operand.</span>
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">-</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other_ref</span>)
+  {
+    <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">result</span>;
+    <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">other</span> = &amp;other_ref;
+    <span style="color: #569cd6;">bool</span> <span style="color: #fff;">thisbigger</span> = <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs() &gt; other-&gt;get_size_abs();
+    <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;negative) {
+      <span style="color: #9cdcfe;">if</span> (!other-&gt;negative) {
+        SORTSIZE(result = <span style="color: #569cd6;">BigNum</span>::add);
+        result.negative = <span style="color: #569cd6;">true</span>;
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        result = <span style="color: #569cd6;">BigNum</span>::subtract(<span style="color: #9cdcfe;">this</span>, other);
+      }
+    }
+    <span style="color: #9cdcfe;">else</span> {
+      <span style="color: #9cdcfe;">if</span> (!other-&gt;negative) {
+        result = <span style="color: #569cd6;">BigNum</span>::subtract(other, <span style="color: #9cdcfe;">this</span>);
+      }
+      <span style="color: #9cdcfe;">else</span> {
+        SORTSIZE(result = <span style="color: #569cd6;">BigNum</span>::add);
+      }
+    }
+
+    result.negative = negative;
+    <span style="color: #9cdcfe;">return</span> result;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Multiplication. Need to sort the operands into bigger-first-order, then</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">call on the algorithm defined in multiply.cpp.</span>
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">*</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other_ref</span>)
+  {
+    <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">other</span> = &amp;other_ref;
+    <span style="color: #569cd6;">bool</span> <span style="color: #fff;">thisbigger</span> = <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs() &gt; other-&gt;get_size_abs();
+    <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">result</span>;
+    SORTSIZE(result = <span style="color: #569cd6;">BigNum</span>::multiply)
+    result.negative = (other-&gt;negative != <span style="color: #9cdcfe;">this</span>-&gt;negative);
+    <span style="color: #9cdcfe;">return</span> result;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Division. No size-sorting this time, just call the divrem class method</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">(defined in divide.cpp) providing location reference for the quotient to be</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">returned.</span>
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">/</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">quotient</span>;
+    <span style="color: #569cd6;">BigNum</span>::divrem(<span style="color: #9cdcfe;">this</span>, &amp;other, &amp;quotient, <span style="color: #569cd6;">NULL</span>);
+    quotient.negative = (other.negative != <span style="color: #9cdcfe;">this</span>-&gt;negative);
+    <span style="color: #9cdcfe;">return</span> quotient;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Modulo. Same algorithm as division (divrem in divide.cpp), except we</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">provide the remainder address instead of the quotient.</span>
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">%</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">remainder</span>;
+    <span style="color: #569cd6;">BigNum</span>::divrem(<span style="color: #9cdcfe;">this</span>, &amp;other, <span style="color: #569cd6;">NULL</span>, &amp;remainder);
+    <span style="color: #9cdcfe;">if</span> (other.negative) {
+      remainder = remainder - other;
+    }
+    <span style="color: #9cdcfe;">return</span> remainder;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Greater than comparison.</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">&gt;</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #9cdcfe;">if</span> (other.negative != <span style="color: #9cdcfe;">this</span>-&gt;negative)
+      <span style="color: #9cdcfe;">return</span> other.negative;
+
+    <span style="color: #569cd6;">size_t</span> <span style="color: #fff;">this_size</span> = <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs(), <span style="color: #fff;">other_size</span> = other.get_size_abs();
+
+    <span style="color: #9cdcfe;">if</span> (this_size &gt; other_size)
+      <span style="color: #9cdcfe;">return</span> !<span style="color: #9cdcfe;">this</span>-&gt;negative; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">this is bigger: if NOT negative then this is greater than.</span>
+
+    <span style="color: #9cdcfe;">if</span> (this_size &lt; other_size)
+      <span style="color: #9cdcfe;">return</span> <span style="color: #9cdcfe;">this</span>-&gt;negative; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">this is smaller: if negative then this is greater than.</span>
+
+    <span style="color: #9cdcfe;">if</span> (this_size == 0)
+      <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">false</span>; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">both the same: both zero</span>
+
+    <span style="color: #569cd6;">int</span> <span style="color: #fff;">i</span> = <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs();
+    <span style="color: #9cdcfe;">while</span> (--i &gt;= 0 &amp;&amp; <span style="color: #9cdcfe;">this</span>-&gt;digits[i] == other.digits[i]);
+
+    <span style="color: #9cdcfe;">if</span> (i &lt; 0)
+      <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">false</span>; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">both the same</span>
+
+    <span style="color: #9cdcfe;">return</span> <span style="color: #9cdcfe;">this</span>-&gt;digits[i] &gt; other.digits[i];
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Equality comparison.</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">==</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;get_size_abs() != other.get_size_abs()) {
+      <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">false</span>;
+    }
+
+    <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;negative != other.negative) {
+      <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">false</span>;
+    }
+
+    <span style="color: #9cdcfe;">for</span> (<span style="color: #569cd6;">size_t</span> <span style="color: #fff;">i</span> = 0; i &lt; <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs(); i++) {
+      <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;digits[i] != other.digits[i])
+        <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">false</span>;
+    }
+
+    <span style="color: #9cdcfe;">return</span> <span style="color: #569cd6;">true</span>;
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">not equal to</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">!=</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #9cdcfe;">return</span> !((*<span style="color: #9cdcfe;">this</span>) == other);
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">greater than or equal to</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">&gt;=</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #9cdcfe;">return</span> ((*<span style="color: #9cdcfe;">this</span>) &gt; other) || ((*<span style="color: #9cdcfe;">this</span>) == other);
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">less than</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">&lt;</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #5C6370;">// </span><span style="color: #5C6370;">less than is not greater or equal to</span>
+    <span style="color: #9cdcfe;">return</span> !((*<span style="color: #9cdcfe;">this</span>) &gt;= other);
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">less than or equal to</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #9cdcfe;">operator</span><span style="color: #dcdcaa;">&lt;=</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> &amp;<span style="color: #fff;">other</span>)
+  {
+    <span style="color: #5C6370;">// </span><span style="color: #5C6370;">less than or equal is not greater</span>
+    <span style="color: #9cdcfe;">return</span> !((*<span style="color: #9cdcfe;">this</span>) &gt; other);
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">String representation. Show the value of the BigNum as a string.</span>
+  <span style="color: #569cd6;">std</span>::<span style="color: #569cd6;">string</span> <span style="color: #dcdcaa;">repr</span>() <span style="color: #9cdcfe;">const</span> {
+
+    <span style="color: #5C6370;">// </span><span style="color: #5C6370;">TODO: this solution is temporary: it will over- and underflow if bigger</span>
+    <span style="color: #5C6370;">// </span><span style="color: #5C6370;">numbers than a long long is capable of storing is used.</span>
+    <span style="color: #569cd6;">int</span> <span style="color: #fff;">i</span> = <span style="color: #9cdcfe;">this</span>-&gt;get_size_abs();
+    <span style="color: #9cdcfe;">if</span> (i == 0)
+      <span style="color: #9cdcfe;">return</span> <span style="color: #7cb461;">"0"</span>;
+
+    <span style="color: #569cd6;">long</span> <span style="color: #569cd6;">long</span> <span style="color: #fff;">res</span> = 0;
+    <span style="color: #9cdcfe;">for</span> (i--; i &gt;= 0; i--) {
+      res &lt;&lt;= DIGIT_SHIFT;
+      res += <span style="color: #9cdcfe;">this</span>-&gt;digits[i];
+    }
+
+    <span style="color: #569cd6;">std</span>::<span style="color: #569cd6;">stringstream</span> <span style="color: #fff;">ss</span>;
+    <span style="color: #9cdcfe;">if</span> (<span style="color: #9cdcfe;">this</span>-&gt;is_negative()) ss &lt;&lt; <span style="color: #7cb461;">"-"</span>;
+    ss &lt;&lt; res;
+    <span style="color: #9cdcfe;">return</span> ss.str();
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Get the 'size' of the BigNum: this gives the number of digits used to store</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">the number. This is used in the maths operations to compare objects and to</span>
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">decide result sizes.</span>
+  <span style="color: #569cd6;">size_t</span> <span style="color: #dcdcaa;">get_size_abs</span>() <span style="color: #9cdcfe;">const</span>
+  {
+    <span style="color: #9cdcfe;">return</span> <span style="color: #9cdcfe;">this</span>-&gt;digits.size();
+  }
+
+
+  <span style="color: #5C6370;">// </span><span style="color: #5C6370;">Get if the number is negative or not.</span>
+  <span style="color: #569cd6;">bool</span> <span style="color: #dcdcaa;">is_negative</span>() <span style="color: #9cdcfe;">const</span>
+  {
+    <span style="color: #9cdcfe;">return</span> <span style="color: #9cdcfe;">this</span>-&gt;negative;
+  }
+
+};
+</pre>
+</div>
+
+<p>
+We have a new class object which can be initialised given a <code>long</code> value to
+hold. Operators <code>+ - * / % &lt; &lt;= == &gt;= &gt;</code> are overloaded with the correct
+functions to perform multi-byte maths or comparison.
+</p>
+</div>
+
+<div id="outline-container-org7cd2f7f" class="outline-3">
+<h3 id="org7cd2f7f">Addition</h3>
+<div class="outline-text-3" id="text-org7cd2f7f">
+<div class="org-src-container">
+<pre class="src src-C++"><span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"bignum.hpp"</span>
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">unsigned addition of two BigNums. First operand is the larger of the two</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">(spread across more digits).</span>
+<span style="color: #569cd6;">BigNum</span> <span style="color: #569cd6;">BigNum</span>::<span style="color: #dcdcaa;">add</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">large_addend</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">small_addend</span>)
+{
+  <span style="color: #569cd6;">size_t</span>
+    <span style="color: #fff;">size_large_addend</span> = large_addend-&gt;get_size_abs(),
+    <span style="color: #fff;">size_small_addend</span> = small_addend-&gt;get_size_abs(),
+    <span style="color: #fff;">i</span> = 0;
+
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">result</span>;
+  <span style="color: #569cd6;">digit</span> <span style="color: #fff;">carry</span> = 0;
+
+  <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_small_addend; i++) {
+    carry += large_addend-&gt;digits[i] + small_addend-&gt;digits[i];
+    result.digits.push_back(carry &amp; DIGIT_MASK);
+    carry = carry &gt;&gt; DIGIT_SHIFT;
+  }
+
+  <span style="color: #9cdcfe;">for</span> (; i &lt; size_large_addend; i++) {
+    carry += large_addend-&gt;digits[i];
+    result.digits.push_back(carry &amp; DIGIT_MASK);
+    carry = carry &gt;&gt; DIGIT_SHIFT;
+  }
+
+  result.digits.push_back(carry);
+
+  result.normalise();
+  <span style="color: #9cdcfe;">return</span> result;
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org92a652d" class="outline-3">
+<h3 id="org92a652d">Subtraction</h3>
+<div class="outline-text-3" id="text-org92a652d">
+<div class="org-src-container">
+<pre class="src src-C++"><span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;iostream&gt;</span>
+
+<span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"bignum.hpp"</span>
+
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">unsigned BigNum subtraction. If the number to be subtracted (the subtrahend)</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">is larger than the number from which it is subtracted (the minuend) --- if</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">the subtraction would cross zero --- then the values are swapped and the</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">result is negated.</span>
+<span style="color: #569cd6;">BigNum</span> <span style="color: #569cd6;">BigNum</span>::<span style="color: #dcdcaa;">subtract</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">minuend</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">subtrahend</span>)
+{
+  <span style="color: #569cd6;">size_t</span>
+    <span style="color: #fff;">size_minuend</span> = minuend-&gt;get_size_abs(),
+    <span style="color: #fff;">size_subtrahend</span> = subtrahend-&gt;get_size_abs();
+  <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">temp</span>;
+  <span style="color: #569cd6;">bool</span> <span style="color: #fff;">negative</span> = <span style="color: #569cd6;">false</span>;
+
+  <span style="color: #9cdcfe;">if</span> (size_minuend &gt; size_subtrahend) {
+    temp = minuend;
+    minuend = subtrahend;
+    subtrahend = temp;
+    size_minuend = minuend-&gt;get_size_abs();
+    size_subtrahend = subtrahend-&gt;get_size_abs();
+    negative = <span style="color: #569cd6;">true</span>;
+  }
+  <span style="color: #9cdcfe;">else</span> <span style="color: #9cdcfe;">if</span> (size_minuend == size_subtrahend) {
+    <span style="color: #569cd6;">int</span> <span style="color: #fff;">i</span> = size_minuend;
+    <span style="color: #9cdcfe;">while</span> (--i &gt;= 0 &amp;&amp; minuend-&gt;digits[i] == subtrahend-&gt;digits[i]);
+
+    <span style="color: #9cdcfe;">if</span> (i &lt; 0)
+      <span style="color: #9cdcfe;">return</span> BigNum(0);
+
+    <span style="color: #9cdcfe;">if</span> (minuend-&gt;digits[i] &lt; subtrahend-&gt;digits[i]) {
+      negative = <span style="color: #569cd6;">true</span>;
+      temp = minuend;
+      minuend = subtrahend;
+      subtrahend = temp;
+    }
+
+    size_minuend = size_subtrahend = i+1;
+  }
+
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">result</span>;
+  <span style="color: #569cd6;">digit</span> <span style="color: #fff;">borrow</span> = 0;
+  <span style="color: #569cd6;">size_t</span> <span style="color: #fff;">i</span>;
+  <span style="color: #9cdcfe;">for</span> (i = 0; i &lt; size_subtrahend; i++) {
+    borrow = minuend-&gt;digits[i] - subtrahend-&gt;digits[i] - borrow;
+    result.digits.push_back(borrow &amp; DIGIT_MASK);
+    borrow = borrow &gt;&gt; DIGIT_SHIFT;
+    borrow &amp;= 1;
+  }
+
+  <span style="color: #9cdcfe;">for</span> (; i &lt; size_minuend; i++) {
+    borrow = minuend-&gt;digits[i] - borrow;
+    result.digits.push_back(borrow &amp; DIGIT_MASK);
+    borrow = borrow &gt;&gt; DIGIT_SHIFT;
+    borrow &amp;= 1;
+  }
+
+  <span style="color: #9cdcfe;">if</span> (borrow != 0) {
+    <span style="color: #569cd6;">std</span>::cerr &lt;&lt; <span style="color: #7cb461;">"borrow not zero; something's not right."</span> &lt;&lt; <span style="color: #569cd6;">std</span>::endl;
+    exit(1);
+  }
+
+  result.negative = negative;
+  result.normalise();
+  <span style="color: #9cdcfe;">return</span> result;
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org76a596e" class="outline-3">
+<h3 id="org76a596e">Multiplication</h3>
+<div class="outline-text-3" id="text-org76a596e">
+<div class="org-src-container">
+<pre class="src src-C++"><span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"bignum.hpp"</span>
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">unisgned multiplication of BigNums.</span>
+<span style="color: #569cd6;">BigNum</span> <span style="color: #569cd6;">BigNum</span>::<span style="color: #dcdcaa;">multiply</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">large_factor</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">small_factor</span>)
+{
+  <span style="color: #569cd6;">size_t</span>
+    <span style="color: #fff;">size_large_factor</span> = large_factor-&gt;get_size_abs(),
+    <span style="color: #fff;">size_small_factor</span> = small_factor-&gt;get_size_abs();
+
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">result</span>;
+  <span style="color: #9cdcfe;">for</span> (<span style="color: #569cd6;">unsigned</span> <span style="color: #569cd6;">int</span> <span style="color: #fff;">i</span> = 0; i &lt; (size_large_factor + size_small_factor); i++)
+    result.digits.push_back(0);
+
+  <span style="color: #569cd6;">unsigned</span> <span style="color: #569cd6;">int</span> <span style="color: #fff;">i_result</span>, <span style="color: #fff;">i_small_factor</span>;
+  <span style="color: #9cdcfe;">for</span> (<span style="color: #569cd6;">unsigned</span> <span style="color: #569cd6;">int</span> <span style="color: #fff;">i_large_factor</span> = 0; i_large_factor &lt; size_large_factor; i_large_factor++) {
+    <span style="color: #569cd6;">twodigits</span> <span style="color: #fff;">carry</span> = 0;
+    <span style="color: #569cd6;">twodigits</span> <span style="color: #fff;">f</span> = large_factor-&gt;digits[i_large_factor];
+    i_result = i_large_factor;
+    i_small_factor = 0;
+
+    <span style="color: #9cdcfe;">for</span> (i_small_factor = 0; i_small_factor &lt; size_small_factor; i_small_factor++) {
+      carry += result.digits[i_result] + small_factor-&gt;digits[i_small_factor] * f;
+      result.digits[i_result++] = (digit)(carry &amp; DIGIT_MASK);
+      carry = carry &gt;&gt; DIGIT_SHIFT;
+    }
+
+    <span style="color: #9cdcfe;">if</span> (carry)
+      result.digits[i_result] += (digit)(carry &amp; DIGIT_MASK);
+
+  }
+
+  <span style="color: #9cdcfe;">return</span> result;
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org6aff331" class="outline-3">
+<h3 id="org6aff331">Division and Remainder</h3>
+<div class="outline-text-3" id="text-org6aff331">
+<div class="org-src-container">
+<pre class="src src-C++"><span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"bignum.hpp"</span>
+
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">This is a very, VERY, simple algorithm to calculate the quotient of a</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">unsigned integer dividend divided by an unisgned integer divisor. The</span>
+<span style="color: #5C6370;">// </span><span style="color: #5C6370;">remainder is also output.</span>
+<span style="color: #569cd6;">void</span> <span style="color: #569cd6;">BigNum</span>::<span style="color: #dcdcaa;">divrem</span>(<span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">dividend_ptr</span>, <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">divisor_ptr</span>,
+                    <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">quotient</span>, <span style="color: #569cd6;">BigNum</span> *<span style="color: #fff;">remainder</span>)
+{
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">_remainder</span> = (*dividend_ptr);
+  <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">_quotient</span>(0);
+  <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">one</span>(1);
+  <span style="color: #9cdcfe;">const</span> <span style="color: #569cd6;">BigNum</span> <span style="color: #fff;">divisor</span> = (*divisor_ptr);
+  <span style="color: #9cdcfe;">while</span> (_remainder &gt; BigNum(0)) {
+    _remainder = _remainder - divisor;
+    _quotient = _quotient + one;
+  }
+
+  <span style="color: #9cdcfe;">if</span> (quotient != <span style="color: #569cd6;">NULL</span>)
+    (*quotient) = _quotient;
+
+  <span style="color: #9cdcfe;">if</span> (remainder != <span style="color: #569cd6;">NULL</span>)
+    (*remainder) = _remainder;
+
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org831d86a" class="outline-2">
+<h2 id="org831d86a">Summary</h2>
+<div class="outline-text-2" id="text-org831d86a">
+<p>
+In this post I looked at the big integer implementation in <code>Python</code>, and I
+created a rudimentary version in <code>C++</code>. While fairly simple, I (re)learned a
+lot about integer mathematics and the nuts and bolts involved in performing
+these everyday operations.
+</p>
+
+<p>
+I also took my first dive into a large open source codebase to find answers!
+This was pretty exciting for me. It's incredible that some random person can
+have a question about exactly how a <i>thing</i> is implemented in the software
+they use, <i>and then go look it up no questions</i>. This is the amazing thing
+about open source software!
+</p>
+
+<p>
+There are some bits and pieces in this implementation I've labeled <code>TODO</code>,
+like parsing a string to BigNum. I will probably not come back to this, but if
+I do I know where to start!
+</p>
+
+<p>
+All of the <code>C++</code> code here is on <a href="https://github.com/cbosoft/BigNum.cpp">github</a>.
+</p>
+</div>
+</div>

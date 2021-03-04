@@ -1,0 +1,233 @@
+---
+title: "Àite Domhainn part 2: time for a diet"
+excerpt: "I think I was biting off a bit too much. Time to trim down the scope a wee bit!"
+layout: post
+---
+
+<div id="outline-container-org3442d8d" class="outline-2">
+<h2 id="org3442d8d">A big to-do list</h2>
+<div class="outline-text-2" id="text-org3442d8d">
+<p>
+When I started on Áite Domhainn I had some grand ideas: a procedurally
+generated universe (easy enough); a user controlled colony that grows over
+time (yeah okay, can do); a realistic history for the planets (ooft, okay
+maybe); multiplayer interaction (not too bad I guess, a bit of added
+complexity); RPG-style statistics that represent the abilities of the colony
+(more complexity)&#x2026; The list goes on.
+</p>
+
+<p>
+This quickly became unweildy. The code base has grown pretty dramatically to
+some 300-odd files or so. Not huge, but a fairly big codebase for one (fairly
+green) person to manage. A big issue was with the generality of the code I was
+writing. I wanted code to be <i>too reusable</i>. This resulted in some janky code
+that wasn't super useful, readable, or (probably) safe to use. In addition,
+the generality limited useability of the code; which in turn stunted the
+scope. I had imagined this grand game, but it would turn out to feel
+half-assed because of this.
+</p>
+
+<p>
+I became disheartened, and I almost abandoned to project. Other work was
+piling up and Áite was left to the side for a few weeks.
+</p>
+
+<p>
+However, I didn't want to let the project fall to the wayside, I like the
+concept and I want to see it through to completion: I decided Áite needed to
+go on a diet!
+</p>
+</div>
+</div>
+
+<div id="outline-container-org4055d9a" class="outline-2">
+<h2 id="org4055d9a">What to cut?</h2>
+<div class="outline-text-2" id="text-org4055d9a">
+<p>
+I decided to be a bit brutal. I'm cutting everything that <a href="https://www.youtube.com/watch?v=9AvWs2X-bEA">"does not spark
+joy"</a>, with the thinking that features can be added back later.
+</p>
+
+<p>
+Colony statistics and RPG elements are cut. This will impact the progression
+of the game, as the game will become predictable with no improvement; this
+will be the first feature to add in next.
+</p>
+
+<p>
+Projects are cut. These were activities the colony could work on (production
+of a <i>thing</i>, create new habitable area, travel to new world). The blurry
+scope made the projects really amorphous and tough to limit. These will have
+to be re-thought and re-worked if they're to be re-added. That's a lot of
+re-ing!
+</p>
+
+<p>
+History elements are cut. These are pretty tough to keep consistent,
+especially in the procedurally generated game. I'd rather just not have it
+than have it inconsistently done.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org07fc117" class="outline-2">
+<h2 id="org07fc117">Okay, so what's <b>left</b>?</h2>
+<div class="outline-text-2" id="text-org07fc117">
+<p>
+Procedurally generated worlds, stars, nebulae etc? Check. A colony that grows
+over time? Check. Detailed descriptions of the planets? Check. Technically
+multiplayer? Check. CLI interface? Check.
+</p>
+
+<p>
+This means leaves more of an aquarium than a game, but its a starting point!
+The player's colony will grow over time and try to explore new locations when
+they run out of space.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org3a072dc" class="outline-2">
+<h2 id="org3a072dc">Adding some game</h2>
+<div class="outline-text-2" id="text-org3a072dc">
+<p>
+How to add some game to this aquarium? That's a good question.
+</p>
+
+<p>
+The game will need to establish the <b>needs</b> of a colony (space, power,
+resources), and then establish a means by which the resoruces become
+<b>scarce</b>. This could be due to growth (a bigger colony needs more space), or due
+to player desires (adding abilities consuming resources), or due to upkeep on
+requirements (habitat requiring maintenance upkeep of metal etc).
+</p>
+
+<p>
+The previously implemented Projects system was too amorphous and generic. I
+want the player to be able to add in new abilities to the colony, but I need
+to rethink how to implement this. This will add the necessary element of
+<b>strategy</b> into this strategy game.
+</p>
+
+<p>
+Finally, there needs to be a failure condition. There should be some way for
+the player to lose. This is necessary to create some kind of tension for the
+player, some motivation. Otherwise, there is no need for the player to ever
+really play the game.
+</p>
+</div>
+
+<div id="outline-container-org5a37747" class="outline-3">
+<h3 id="org5a37747">Needs</h3>
+<div class="outline-text-3" id="text-org5a37747">
+<p>
+A colony will have the following needs:
+</p>
+<ul class="org-ul">
+<li>Space</li>
+<li>Power</li>
+<li>Resource</li>
+</ul>
+
+<p>
+Space, as in living space, is obtained by exploring new planets and building
+new habitat in the available space. This need is exacerbated by the growth of
+the colony. The colony will forever need new space.
+</p>
+
+<p>
+Power is provided by solar and nuclear generation methods. Nuclear fuel is
+created by processing resource and solar power to created by harnessing the
+light from nearby stars. Power is required by population, and also by new
+abilities.
+</p>
+
+<p>
+Resources are found by exploring new planets and become scarce by use in
+various ways.
+</p>
+
+<p>
+This is a simplification; in game, this is more complex (space and power are
+processed resources, derived from resources, which are broken down into
+constituents). I'm leaving the complicated version in-server, but the client,
+I think, will only talk about the simplified versions ("3x10<sup>5</sup> m3 of living
+space", "5x10<sup>24</sup> kg of usable resources").
+</p>
+</div>
+</div>
+
+<div id="outline-container-org46abb6d" class="outline-3">
+<h3 id="org46abb6d">Scarcity</h3>
+<div class="outline-text-3" id="text-org46abb6d">
+<p>
+Resources are used up as the colony grows. Whether in space (a bigger colony
+needs more room) or in time (over time the colony will drain its stock of
+resource).
+</p>
+
+<p>
+Discussed in the next section are Abilities, things the colony works up to
+being able to do. These abilities will add drains onto the Colony's resources
+and contribute to the scarcity.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org092e9b0" class="outline-3">
+<h3 id="org092e9b0">Abilities</h3>
+<div class="outline-text-3" id="text-org092e9b0">
+<p>
+I'd like there to be some player advancement in the game. Like in a game of
+Civ: as a game goes on your cities grow and production increases and
+buildings are created faster, so that when you start a new game you are
+starkly reminded how far you've come. So to in Áite. I'd like the player to
+feel a sense of progress over time. This will be accomplished by the use of
+Abilities.
+</p>
+
+<p>
+A colony can work towards abilities, requiring the use of resources and time
+to obtain.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org3f30d9f" class="outline-3">
+<h3 id="org3f30d9f">Interaction</h3>
+<div class="outline-text-3" id="text-org3f30d9f">
+<p>
+I didn't mention it above, but I guess its implied. There will need to be a
+way for the player to interact! I had envisaged a plurality of interaction
+methods: a curses-based TUI, a full GUI, as well as the command line command
+processor. However, I think the former two are antithetical to the original
+idea: a game you "play" in your terminal over the course of many, many weeks.
+</p>
+
+<p>
+I think simple commands would be the easiest way to achieve this, perhaps
+being strict with having a minimal syntax:
+</p>
+
+<pre class="example">
+aite_client &lt;command&gt; [&lt;subcommand&gt;]
+</pre>
+
+<p>
+This would force me to keep the game (and the codebase) simple.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2f69a38" class="outline-2">
+<h2 id="org2f69a38">Conclusion</h2>
+<div class="outline-text-2" id="text-org2f69a38">
+<p>
+So I'm gonna trim the fat on Áite: cutting features I regard as bloat. I'm
+gonna keep it simple, and not introduce new (unnecessary) features. I'm going
+to keep additions minimal, and only introduce them if they coincide with the
+games intent: simple idle game, elements of strategy and space adventure.
+</p>
+</div>
+</div>
