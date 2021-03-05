@@ -1,0 +1,14 @@
+digraph G {
+  10 [label="10 TRAIN",shape=rectangle];
+  20 [label="20 PREDICT",shape=rectangle];
+
+  start->10->20->end;
+
+  {
+    rank=same;
+    start; 10; 20; end;
+  }
+
+  start [shape=Mdiamond];
+  end [shape=Msquare];
+}

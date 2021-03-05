@@ -1,0 +1,27 @@
+digraph G {
+  fontname="CMU Sans Serif";
+  node [fontname="CMU Sans Serif"];
+  edge [fontname="CMU Sans Serif"];
+  
+  start [shape=box,style=rounded];
+  cond [shape=diamond,label="done?"];
+  end [shape=box,style=rounded];
+
+  subgraph cluster_0 {
+    update_weights [shape=box, label="update weights"];
+    get_error [shape=box,label="calculate error"];
+    label="optimiser";
+    labeljust="l";
+    labelloc="b";
+    color="lightgray";
+    style="filled";
+  }
+
+  start:s -> update_weights:n;
+  update_weights:s -> get_error:n;
+  get_error:s -> cond:n;
+
+  cond:s -> end:n [label=" y"];
+  cond:e -> update_weights:e [label=" n"];
+
+}

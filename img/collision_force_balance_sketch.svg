@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200">
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="0" refY="0" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L-9,-3 L-9,3 z" fill="white" stroke="black" />
+    </marker>
+    <marker id="rarrow" markerWidth="10" markerHeight="10" refX="0" refY="0" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L9,-3 z" fill="white" stroke="black" />
+    </marker>
+  </defs>
+  <style>
+    * {
+    font-family: sans-serif;
+    font-size: 7pt;
+    font-weight: bold;
+    }
+  </style>
+  
+
+  <path d="M 400 400 L 800 400" stroke="blue" fill="none" stroke-width="2"/>
+ 
+  <circle cx="400" cy="400" r="200" stroke="black" stroke-width="2" fill="white"/>
+  <circle cx="400" cy="400" r="10" stroke="black" fill="black"/>
+  <!-- left particle momentum vector --> <path d="M 400 400 l -300 200" stroke="black" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- left particle tangent vector --> <path d="M 100 400 l 0 200" stroke="green" stroke-dasharray="5,5" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- left particle normal vector --> <path d="M 400 400 l -300 0" stroke="red" stroke-dasharray="5,5" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- left particle angular momentum vector --> <path d="M 400 550 a 150 150 0 0 0 0 -300" stroke="yellow" fill="none" stroke-width="2" marker-end="url(#arrow)" />
+ 
+  <circle cx="800" cy="400" r="200" stroke="black" stroke-width="2" fill="white"/>
+  <circle cx="800" cy="400" r="10" stroke="black" fill="black"/>
+  <!-- right particle momentum vector --> <path d="M 800 400 l 300 -350" stroke="black" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- right particle tangent vector --> <path d="M 1100 400 l 0 -350" stroke="green" stroke-dasharray="5,7" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- right particle normal vector --> <path d="M 1100 400 l -300 0" stroke="red" stroke-dasharray="5,7" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- right particle angular momentum vector --> <path d="M 800 550 a 150 150 0 0 1 0 -300" stroke="yellow" fill="none" stroke-width="2" marker-end="url(#arrow)" />
+
+
+
+  <!-- after frictional theft -->
+
+  <circle cx="400" cy="900" r="200" stroke="black" stroke-width="2" fill="white"/>
+  <circle cx="400" cy="900" r="10" stroke="black" fill="black"/>
+  <!-- left particle momentum vector --> <path d="M 400 900 l -300 100" stroke="black" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- left particle tangent vector --> <path d="M 100 900 l 0 100" stroke="green" stroke-dasharray="5,5" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- left particle normal vector --> <path d="M 400 900 l -300 0" stroke="red" stroke-dasharray="5,5" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- left particle angular momentum vector --> <path d="M 400 1050 a 150 150 0 0 0 0 -300" stroke="yellow" fill="none" stroke-width="2" marker-end="url(#arrow)" />
+  <!-- left particle angular momentum vector --> <path d="M 400 1050 a 150 150 0 0 1 -106 -44" stroke="green" fill="none" stroke-width="2" />
+ 
+  <circle cx="800" cy="900" r="200" stroke="black" stroke-width="2" fill="white"/>
+  <circle cx="800" cy="900" r="10" stroke="black" fill="black"/>
+  <!-- right particle momentum vector --> <path d="M 800 900 l 300 -175" stroke="black" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- right particle tangent vector --> <path d="M 1100 900 l 0 -175" stroke="green" stroke-dasharray="5,7" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- right particle normal vector --> <path d="M 800 900 l 300 0" stroke="red" stroke-dasharray="5,7" fill="none" stroke-width="2" marker-start="url(#rarrow)"/>
+  <!-- right particle angular momentum vector --> <path d="M 800 1050 a 150 150 0 0 1 0 -300" stroke="yellow" fill="none" stroke-width="2" marker-end="url(#arrow)" />
+  <!-- right particle angular momentum vector --> <path d="M 800 1050 a 150 150 0 0 0 57.4 -11.4" stroke="green" fill="none" stroke-width="2" />
+
+  
+</svg>

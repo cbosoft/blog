@@ -1,0 +1,111 @@
+digraph G {
+  rankdir=LR;
+  ordering=out;
+  fontname="CMU Sans Serif";
+  node [fontname="CMU Sans Serif"];
+  edge [fontname="CMU Sans Serif"];
+  ranksep="1.0 equally";
+
+  subgraph cluster_0 {
+    I1;
+    I2;
+    I3;
+
+    label = "Input Layer";
+  }
+
+  subgraph cluster_1 {
+    H11;
+    H12;
+    H13;
+    H14;
+    H15;
+  
+    label = "Hidden 1";
+    style=filled;
+    color=lightgrey;
+  }
+
+  subgraph cluster_2 {
+    H21;
+    H22;
+    H23;
+    H24;
+  
+    label = "Hidden 2";
+    style=filled;
+    color=lightgrey;
+  }
+
+  subgraph cluster_3 {
+    O1;
+    O2;
+    O3;
+    O4;
+
+    label = "Output Layer";
+  }
+
+  I1 -> H11;
+  I1 -> H12;
+  I1 -> H13;
+  I1 -> H14;
+  I1 -> H15;
+
+  I2 -> H11;
+  I2 -> H12;
+  I2 -> H13;
+  I2 -> H14;
+  I2 -> H15;
+
+  I3 -> H11;
+  I3 -> H12;
+  I3 -> H13;
+  I3 -> H14;
+  I3 -> H15;
+
+  H11 -> H21;
+  H11 -> H22;
+  H11 -> H23;
+  H11 -> H24;
+
+  H12 -> H21;
+  H12 -> H22;
+  H12 -> H23;
+  H12 -> H24;
+
+  H13 -> H21;
+  H13 -> H22;
+  H13 -> H23;
+  H13 -> H24;
+
+  H14 -> H21;
+  H14 -> H22;
+  H14 -> H23;
+  H14 -> H24;
+
+  H15 -> H21;
+  H15 -> H22;
+  H15 -> H23;
+  H15 -> H24;
+
+  H21 -> O1;
+  H21 -> O2;
+  H21 -> O3;
+  H21 -> O4;
+  
+  H22 -> O1;
+  H22 -> O2;
+  H22 -> O3;
+  H22 -> O4;
+
+  H23 -> O1;
+  H23 -> O2;
+  H23 -> O3;
+  H23 -> O4;
+
+  H24 -> O1;
+  H24 -> O2;
+  H24 -> O3;
+  H24 -> O4;
+}
