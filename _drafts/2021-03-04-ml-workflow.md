@@ -9,8 +9,10 @@ excerpt: How do you do more with real data in machine learning?
 Machine learning, as the innumerable medium articles will show you, is simple.
 However, this is lies. To do the same "hello world" style application as all
 those authors it is indeed very simple. However, do you really need to recognise
-hand-written digits? Do you care about flow classification? No! You want to do
-your project!
+hand-written digits? Do you care about flow classification?  Not really! These
+projects are useful to get to grips with the very basic concepts - but they are
+unreal. The data isn't messy, the labels are all correct, and, mostly, the data
+sets are small.
 
 There is a wealth of complexity under the surface. Many libraries have made it
 very easy to get started by abstracting the models away into a black box. This
@@ -51,7 +53,10 @@ it once more. Quickly, I promise.
 Images masks in to dumb machine; machine get smart. Images in to smart machine;
 masks come out.
 
-Phew. That was easy. A simple python program to do that:
+Phew. That was easy. As a flowchart:
+![basic_flow](/img/ml_basic_flow.png)
+
+And a simple python program to do the first part:
 
 {% highlight python%}
 from fastai.vision.all import *
@@ -69,7 +74,8 @@ data = get_data()
 
 # fastai uses DataLoaders to manage input of data to the model
 dblock = DataBlock(
-    blocks=(ImageBlock, MaskBlock(codes=['naw', 'aye']))
+    blocks=(ImageBlock, MaskBlock(codes=['naw', 'aye'])),
+    getters=(ItemGetter(0), ItemGetter(1))
 )
 dls = dblock.dataloaders(data)
 
@@ -95,14 +101,14 @@ Real data is noisy. It is blurry. It is confusing. Worst of all, a model trained
 on real data, (and automatically segmented e.g. by traditional means) can be
 *wrong*.
 
-To overcome this, we need to be a bit flexible in out training approach. The
-easiest way to improve is to stick a *human in the loop*. This just means you
-manually correct any mistakes in the segmentation results, the new masks being
-fed back in to re-train the model.
+To overcome this, we need to be a bit flexible in our training, and we need to
+be ready to fix up our data. The easiest way to improve is to stick a *human in
+the loop*. This just means you manually correct any mistakes in the segmentation
+results, the new masks being fed back in to re-train the model.
 
-The process can be summarised on this rather unnecessary flowchart:
+The process can be summarised on another unnecessary flowchart:
 
-![flowchart1](/img/ml_flowchart1.svg)
+![flowchart1](/img/ml_flowchart_1.png)
 
 The first step (`00 SEGMENT`) is what ever you do to get masks from images.
 After this, you could check the annotations (`05 ANNOTATE`), or you can wait
@@ -120,3 +126,15 @@ weights optimised to perform the requested segmentation. At least, that's the
 hope! We need to check the training results. How good was the training? If we
 apply the model, do we get good masks out?
 
+## Calculating confidence
+
+
+
+# Under the bonnet
+
+Neural networks have come a long way since their beginning (see [my first ML post]({% post_url 2020-02-22-neural_networks %}) )
+for a run down on some of the history. Modern neural networks are more than just
+connected layers; they have different operations gluing the layers together
+performing edge and feature detection using convolution, creating highly
+effective and highly efficient pattern recognition tools. - leaps and bounds
+ahead of the linear function model they were back in the 50s!
