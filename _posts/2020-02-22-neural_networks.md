@@ -4,10 +4,7 @@ excerpt: In this post I look at the basics of Neural Networks, and build (a very
 layout: post
 ---
 
-<div id="outline-container-org505f80f" class="outline-2">
-<h2 id="org505f80f">Motivation</h2>
-<div class="outline-text-2" id="text-org505f80f">
-<p>
+# Motivation
 A little while ago a friend of mine showed me his stock trading bot. The bot
 was given a bit of cash, a trading platform API key, and some simple rules to
 follow. If a stock was rising, buy. If it started to fall, sell. There were
@@ -16,30 +13,18 @@ about incorporating some simple machine learning into the project, he seemed
 unsure, he liked the simplicity of his solution I think. I started thinking
 about doing this myself, it sounded like a fairly simple idea. And with high
 level tools like Tensorflow available, it should be fairly easy to implement.
-</p>
 
-<p>
 However, I am quite interested in the nuts and bolts of machine learning, so
 I'm not going to use a high level package. I'm going to write my own neural
 network, hopefully learning a lot along the way.
-</p>
 
-<p>
 I'll start by looking at the basics and some of the history of machine
 learning and neural networks, then I'll start going into the implementation
 details.
-</p>
 
-<p>
-The result is on my github <a href="https://github.com/cbosoft/sinn">here</a>.
-</p>
-</div>
-</div>
+The result is on my github [here](https://github.com/cbosoft/sinn").
 
-<div id="outline-container-org9b93f7b" class="outline-2">
-<h2 id="org9b93f7b">Machine Learning</h2>
-<div class="outline-text-2" id="text-org9b93f7b">
-<p>
+## Machine Learning
 Machine Learning (ML) started life in the 1950s as Artificial Intelligence
 (AI). Programs were built to "reason" solutions to problems and identify
 patterns. Neural Networks are one of the first forms of practical artificial
@@ -48,28 +33,27 @@ which are either "firing" or "quiet" depending on the value of other neurons
 or inputs. The first Neural Network machine was the SNARC built in 1951 and
 designed by influential computer scientist Marvin Minsky (unfortunately
 someone who was involved with that Epstein bloke).
-</p>
 
 <center>
-  <img src="{{ site.images_dir }}/snarc_neuron.png" width="60%"/><br />
+  <img src="/img/snarc_neuron.png" width="60%"/>
   from: <a href="https://www.the-scientist.com/foundations/machine--learning--1951-65792">The Scientist article "Machine, Learning, 1951"</a>
 </center>
 
-<p>
+<div class="message">
 I have been trying to find a diagram of the SNARC, but no luck. It is probably
 in Minsky's PhD thesis (University of Princeton, 1954), but I cannot access a
 full version of the thesis. I have found a <a href="https://search.proquest.com/docview/301998727">preview version</a>, which only covers
 the first 24 pages.
-</p>
 
-<p>
 Unfortunately, his thesis is proving <i>really</i> tough to track down. I can find
 no electronic copy anywhere, and no physical copies held by libraries willing
 to lend. Sigh. I hope to someday see the designs for the electro-mechanical
 learning machine!
-</p>
 
-<p>
+Update March 2021: I have found a copy of the thesis! I'll need to devote a wee
+bit of time to pouring through it to find any interesting notes.
+</div>
+
 A Neural Network is a common machine learning method, but there are others:
 decision tree, hierarchical clustering, random forest, and even linear
 regression. (I found <a href="https://machinelearningmastery.com/a-tour-of-machine-learning-algorithms/">this</a> article which has a lot more examples and some
@@ -77,56 +61,38 @@ information on each.) I was surprised to see that linear regression made the
 list of machine learning algorithms. I guess I fell into the trap of AI: if I
 understand it then it can't possible be real machine learning. (I definitely
 read about that somewhere but I can't remember where.) 
-</p>
 
-<p>
 I'll concentrate on the Neural Network, since it was one of the first, and is
 still a top contender today (through its new form: deep neural networks).
-</p>
-</div>
-</div>
 
-<div id="outline-container-org16081bd" class="outline-2">
-<h2 id="org16081bd">Neural Networks</h2>
-<div class="outline-text-2" id="text-org16081bd">
-<p>
+# Neural Networks
 A neural network is a network of neurons, of on-or-off binary signals,
 connected by "dendrites". Neurons fire depending on the value of other
 neurons. This is modelled by weighting the value of the all the dendrites,
 edges, feeding into the neuron and summing. If the value passes a threshold,
 it is firing. Otherwise, it is quiet.
-</p>
 
-<p>
-For a neuron \(j\), its value \(z_{j}\) is the sum of the values of the neurons
-input to it, <b>weighted</b> each by a factor \(w\) plus a bias: 
-</p>
+For a neuron $$j$$, its value $$z_{j}$$ is the sum of the values of the neurons
+input to it, **weighted** each by a factor $$w$$ plus a bias:
 
-<p>
-\[ z_{j} =  \sum_{i=0}^{N }v_{i}w_{i} + bias \]
-</p>
+$$ z_{j} =  \sum_{i=0}^{N }v_{i}w_{i} + bias $$
 
-<p>
-The neuron value is then passed to an <b>activation function</b> which decides if
+The neuron value is then passed to an **activation function** which decides if
 the neuron fires or stays quiet. This stage is very important and affects the
 speed at which the network is trained and the effectiveness of the resulting
 network. Essentially the function determines how the neuron responds to input:
 how quickly a change in input changes the output, what thresholds there might
 be and so on. The training methods (briefly described later on) rely on
-<i>gradients</i>, as in the derivative of the output with respect to the input. The
+*gradients*, as in the derivative of the output with respect to the input. The
 derivative of the activation function therefore plays an important role in
 training and must be chosen appropriately.
-</p>
 
-<p>
 The "learning" aspect enters in by the evolution of the weights. Weights are
 chosen so that a set of sample inputs gives an expected sample output. These
-sample sets of inputs and outputs make up the <b>training dataset</b>. The process
+sample sets of inputs and outputs make up the **training dataset**. The process
 of changing the weights is called training, and this is the key part of the
 algorithm which teaches the net how to perform the desired task.
-</p>
 
-<p>
 How are the weights found? The training set and expected output are key here:
 the output from the network compared with the expected output gives us an
 error. We can find the ideal weights by a few different methods, mediated by
@@ -137,31 +103,25 @@ find the lowest amplitude location in our phase space (the landscape formed by
 our weights and error plot). Gradient descent describes the path of walking
 down this landscape to the minimum error by looking at the gradient of error
 with respect to the weights.
-</p>
 
-<p>
 There are other methods of finding this minimum point, and we have reduced the
 complex task we want the network to do, to a minimisation problem! The task of
 recognising the genus of a lilly plant based on the shape of its leaves is
 just minimisation! Prediction of stock market prices is minimisation!
 Classification of animals into bird, cat, or other is minimisation! 
-</p>
 
-<p>
 Neural networks make it (relatively) easy to answer complex questions about
 data, however it doesn't unveil much about the neural network's "thinking"
 process. This is therefore a "black box" method, where the result is obtain by
 an unknown method and therefore must come with a pinch of salt. This pinch of
 salt is normally given as a confidence or certainty probability quoted
-alongside the answer. 
-</p>
+alongside the answer.
 
 <center>
-<img src="{{ site.images_dir }}/serval.jpg"/><br />
+<img src="/img/serval.jpg"/><br />
 from: <a href="https://bigcatrescue.org/pharaoh/">Big Cat Rescue</a> - Pharaoh the white serval
 </center>
 
-<p>
 Even this has some caveats. The simple classification problem decribed above
 of splitting all animals into cat or bird or other becomes quite tough when we
 consider that many animals share aspects of cats. Is a serval a cat? What
@@ -171,27 +131,18 @@ similar body shapes, or straight up close genetic make-up. The neural network
 used to answer the question needs to have complexity enough to fully encompass
 the solution. It needs to pick up on subtle differences between the serval and
 the cat, or it will mis-classify.
-</p>
 
-<p>
 In the wall of text I have spouted here we can identify the two components of
-a successful neural network: <b>sufficient complexity</b> (i.e. enough neurons) to
-describe the solution fully, and <b>good quality training data</b> to create the
+a successful neural network: **sufficient complexity** (i.e. enough neurons) to
+describe the solution fully, and **good quality training data** to create the
 pattern in the network.
-</p>
-</div>
-</div>
 
-<div id="outline-container-orgb8b9a0c" class="outline-2">
-<h2 id="orgb8b9a0c">Layers</h2>
-<div class="outline-text-2" id="text-orgb8b9a0c">
-<p>
+## Layers
 I've talked about a Neuron, the nodes in our graph network, but how are the
 neurons connected?
-</p>
 
 <center>
-<img src="{{ site.images_dir }}/neural_network_example.png"/><br />
+<img src="/img/neural_network_example.png"/><br />
 </center>
 
 <p>
@@ -300,7 +251,7 @@ hidden layers:
 </p>
 
 <center>
-  <img src="{{ site.images_dir }}/deep_learning.jpg" width="60%"/><br />
+  <img src="/img/deep_learning.jpg" width="60%"/><br />
   from: <a href="https://commons.wikimedia.org/wiki/File:Deep_Learning.jpg">Wikimedia Commons</a>: Deep Learning.jpg by Sven Behnke <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA 4.0</a>
 </center>
 
@@ -315,12 +266,8 @@ pattern you're looking for is hidden under layers of complexity, then hidden
 layers are needed to use the pieces extracted from the input layer to build
 up something that can be recognised.
 </p>
-</div>
-</div>
 
-<div id="outline-container-org20cc5b1" class="outline-2">
 <h2 id="org20cc5b1">Training</h2>
-<div class="outline-text-2" id="text-org20cc5b1">
 <p>
 I briefly touch upon the concept of training earlier: the process of choosing
 weights correctly such that the output of the net given a sample input is what
@@ -343,7 +290,7 @@ simple neural network. Information on the others mentioned above in this
 </p>
 
 <center>
-  <img src="{{ site.images_dir }}/nn_training_flowchart.png"/><br />
+  <img src="/img/nn_training_flowchart.png"/><br />
 </center>
 
 <p>
@@ -405,12 +352,8 @@ often.
 Choosing the number of epochs, the right amount of training, is a difficult
 question. The answer I've found so far is to use trial and error.
 </p>
-</div>
-</div>
 
-<div id="outline-container-orgbef4e1c" class="outline-2">
 <h2 id="orgbef4e1c">Testing</h2>
-<div class="outline-text-2" id="text-orgbef4e1c">
 <p>
 I'm building up from nothing, so I'll need some way of testing the network and
 the training process to check they're working as expected. Luckily, this
@@ -486,12 +429,8 @@ or
 \[ y_{i} = i \]
 </p></li>
 </ol>
-</div>
-</div>
 
-<div id="outline-container-org64e6397" class="outline-2">
 <h2 id="org64e6397">Implementing a Neural Network</h2>
-<div class="outline-text-2" id="text-org64e6397">
 <p>
 Alright, so how do we go about building a neural network? Well the quick
 answer is to use a library like <code>Tensorflow</code>, <code>Theano</code>, <code>scikit-learn</code>, or
@@ -515,17 +454,13 @@ designed to find an answer to a yes/no question, the final layer (before the
 output layer) might only have a few neurons, the output layer having only one
 (which fires for "yes" and is quiet for "no").
 </p>
-</div>
 
-<div id="outline-container-org8989472" class="outline-3">
 <h3 id="org8989472">Neuron</h3>
-<div class="outline-text-3" id="text-org8989472">
 <p>
 Let's start with the basic building block: the neuron. This object will
 contain a reference to its input connections, and their associated weights.
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/neuron.hpp</span>
 <span style="color:  #dcdcaa;">#pragma</span> once
 
@@ -545,7 +480,6 @@ contain a reference to its input connections, and their associated weights.
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 The Neuron base class is never intended to be used directly, only through its
@@ -561,7 +495,6 @@ classes. (How great is polymorphism in <code>C++</code>?) With our base interfac
 place, let's derive a neuron for the hidden and output layers:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/hidden_neuron.hpp</span>
 <span style="color:  #dcdcaa;">#pragma</span> once
 
@@ -607,7 +540,6 @@ place, let's derive a neuron for the hidden and output layers:
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 The Hidden Neuron is a neuron in a hidden (or output) layer. These neurons
@@ -622,7 +554,6 @@ The <code>get_value()</code> function is pretty simple, just adding the weighted
 of the inputs:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/hidden_neuron.cpp</span>
 <span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">"hidden_neuron.hpp"</span>
 
@@ -642,7 +573,6 @@ of the inputs:
 
 }; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 This is the main functionality of the hidden- and output-layer neurons:
@@ -651,7 +581,6 @@ For this implementation, input "neurons" are just placeholders, taking a
 value and returning it as their own.
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/input_neuron.hpp</span>
 <span style="color:  #dcdcaa;">#pragma</span> once
 
@@ -677,14 +606,12 @@ value and returning it as their own.
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 The constructor this time takes a value as input, which the neuron can then
 return when asked for its value:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #9cdcfe;">namespace</span> <span style="color: #569cd6;">sinn</span> {
 
   <span style="color: #569cd6;">InputNeuron</span>::<span style="color: #dcdcaa;">get_value</span>()
@@ -694,13 +621,8 @@ return when asked for its value:
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
-</div>
-</div>
 
-<div id="outline-container-org0cb1296" class="outline-3">
 <h3 id="org0cb1296">Layer</h3>
-<div class="outline-text-3" id="text-org0cb1296">
 <p>
 Next up, organising neurons into Layers. Layers, for this API, are nice ways
 of constructing a number of neurons with specified weights.
@@ -711,7 +633,6 @@ As with the Neuron, I'll start with an abstract base which will be overridden
 by more specific sub-classes:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/layer.hpp</span>
 <span style="color:  #dcdcaa;">#pragma</span> once
 
@@ -739,7 +660,6 @@ by more specific sub-classes:
   };
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 A <code>Layer</code> consists of a vector of <code>Neurons</code>, and that's it. It's friends with
@@ -755,7 +675,6 @@ a small <code>generate_neurons(int n)</code> method which allows for the easy cr
 of neurons:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/hidden_layer.hpp</span>
 <span style="color:  #dcdcaa;">#pragma</span> once
 
@@ -778,7 +697,6 @@ of neurons:
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 The <code>InputLayer</code> is a little more different, constructed with not a number of
@@ -786,25 +704,17 @@ neurons, but a vector of the values for the <code>InputNeurons</code> that make 
 layer:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">TODO</span>
 </pre>
-</div>
 
 <p>
 And the <code>OutputLayer</code>:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">TODO</span>
 </pre>
-</div>
-</div>
-</div>
 
-<div id="outline-container-org14b2101" class="outline-3">
 <h3 id="org14b2101">Network</h3>
-<div class="outline-text-3" id="text-org14b2101">
 <p>
 With the organisational stuff out of the way, on to the meat of the thing!
 The <code>NeuralNetwork</code> is a network of <code>Neurons</code>, abstracted through <code>Layers</code>. I
@@ -813,7 +723,6 @@ does stuff too! It takes data (vector of float) and processes through the
 network and returns the result. Also, it can <i>learn</i>!
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/neural_network.hpp</span>
 <span style="color:  #dcdcaa;">#pragma</span> once
 
@@ -871,7 +780,6 @@ network and returns the result. Also, it can <i>learn</i>!
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 Notable methods here are <code>train()</code> and <code>get_error()</code>.
@@ -883,7 +791,6 @@ Layers are added one by one, starting from the furthest upstream (an
 forming the Network:
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/neural_network.cpp</span>
 <span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;iostream&gt;</span>
 <span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;sstream&gt;</span>
@@ -915,7 +822,6 @@ forming the Network:
 
 }; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 There are other forms of the <code>add_layer..()</code> function which generate a random
@@ -927,12 +833,8 @@ starting weight as given.
 The final layer should be an <code>OutputLayer</code>, completing the network streaming
 data from Input to Output.
 </p>
-</div>
-</div>
 
-<div id="outline-container-org28075a1" class="outline-3">
 <h3 id="org28075a1">Gradient Descent</h3>
-<div class="outline-text-3" id="text-org28075a1">
 <p>
 Gradient descent is the training process of measuring the error's rate of
 change with respect to the weights/biases, and altering the weights/biases
@@ -942,7 +844,6 @@ through the Network, and the error is calculated as the sum of the square
 of the difference between the calculated output and the desired output.
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/train.cpp</span>
 <span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;iostream&gt;</span>
 
@@ -976,7 +877,6 @@ of the difference between the calculated output and the desired output.
 
 } <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
 
 <p>
 The error can be calculated before and after a small change (<i>perturbation</i>)
@@ -1004,7 +904,6 @@ is stored until all the gradients have been calculated, then it is
 enacted. This process should reduce the error to an acceptably low value.
 </p>
 
-<div class="org-src-container">
 <pre class="src src-C++"><span style="color: #5C6370;">// </span><span style="color: #5C6370;">src/train.cpp</span>
 <span style="color:  #dcdcaa;">#include</span> <span style="color: #7cb461;">&lt;iostream&gt;</span>
 
@@ -1071,14 +970,8 @@ enacted. This process should reduce the error to an acceptably low value.
 
 }; <span style="color: #5C6370;">// </span><span style="color: #5C6370;">namespace sinn</span>
 </pre>
-</div>
-</div>
-</div>
-</div>
 
-<div id="outline-container-org66f675e" class="outline-2">
 <h2 id="org66f675e">Demonstration</h2>
-<div class="outline-text-2" id="text-org66f675e">
 <p>
 In the repository I have some tests prepared for some <b>very</b> simple
 use-cases. To run them, clone the repo and just <code>make</code>. It depends only on
@@ -1087,26 +980,18 @@ of the network being built and the tests being run:
 </p>
 
 <center>
-  <img src="{{ site.images_dir }}/nn_tests.gif" width="60%"/><br />
+  <img src="/img/nn_tests.gif" width="60%"/><br />
 </center>
-</div>
-</div>
 
-<div id="outline-container-orgca490f2" class="outline-2">
 <h2 id="orgca490f2">Closing remarks</h2>
-<div class="outline-text-2" id="text-orgca490f2">
 <p>
 In this post I've shown how simple a neural network can be, in my simple
 literal implementation. There are many improvements that could be made (back
 propagating learning, fewer abstractions, better testing), but sadly I lack
 the time.
 </p>
-</div>
-</div>
 
-<div id="outline-container-orgb36eee5" class="outline-2">
 <h2 id="orgb36eee5">Resources</h2>
-<div class="outline-text-2" id="text-orgb36eee5">
 <p>
 Some useful resources on Neural Networks:
 </p>
@@ -1125,5 +1010,3 @@ Some useful resources on Neural Networks:
 <li>"Epoch vs Iterations vs Batch size" - <a href="https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9">https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9</a></li>
 <li>tiny-dnn: header-only dependency-free deep learning neural network library - <a href="https://github.com/tiny-dnn/tiny-dnn">https://github.com/tiny-dnn/tiny-dnn</a></li>
 </ul>
-</div>
-</div>
