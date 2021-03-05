@@ -126,7 +126,26 @@ weights optimised to perform the requested segmentation. At least, that's the
 hope! We need to check the training results. How good was the training? If we
 apply the model, do we get good masks out?
 
+
 ## Calculating confidence
+
+How do we calculate confidence in the output from the model? Let's look at the
+example above. The model outputs a tensor of activations of the final
+layer for each of the classes. If we're analysing 100px by 100px images, and we
+have two classes, then we expect this tensor to have a shape of `(2, 100, 100)`.
+This is essentially two 100x100 images, one for each class, where each pixel is
+an activation value. Roughly speaking, the class with the larger value is the
+chosen class for each pixel. But can the machine always choose 'a' or 'b'? Can't
+it ever be stumped? Perhaps there should be a third option: **none of the
+above**.
+
+"Activation" is just just whatever number is the result of summing the weighted
+and biased value of the neurons in the layer behind - I mean it is a pretty
+arbitrary value. We want some way to normalise or convert this to a percentage.
+Then we can assess using our monkey brains whether the class chosen for a pixel
+should be 'aye' or 'naw', or if the machine can't tell, an important third
+option.
+
 
 
 
