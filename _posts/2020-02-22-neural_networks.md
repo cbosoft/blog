@@ -2,7 +2,7 @@
 title: A Neural Network so simple its SINNfull
 excerpt: In this post I look at the basics of Neural Networks, and build (a very simple) one from scratch.
 layout: post
-tags: ml
+tags: ml software-dev
 ---
 
 # Motivation
