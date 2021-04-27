@@ -1,12 +1,18 @@
 ---
-title: Machine Learning Workflow
+title: Image Segmentation and Machine Learning
 layout: post
 excerpt: How do you do more with real data in machine learning?
+tags: ml
 ---
 
 # Introduction
 
 Machine learning, as the innumerable medium articles will show you, is simple.
+They will introduce a standard dataset (often very simple and small) and train a
+model and boom there you go Robert is your mother's brother you have a working
+black box which takes an input and gives you the output. This proves that ML is
+simple.
+
 However, this is lies. To do the same "hello world" style application as all
 those authors it is indeed very simple. However, do you really need to recognise
 hand-written digits? Do you care about flow classification?  Not really! These
@@ -20,21 +26,14 @@ is fantastic for those who just need something to pick out dogs from cats from a
 bunch of pictures. For more niche uses, you'll want to roll your own, to some
 extent.
 
-As someone who learns by doing, I found this quite tricky to begin with. Many of
-the articles out there only describe their approach *very simplistically*. If
-you want to learn-by-doing, then you might not be able to re-create the result
-and thus are unable to marry the approach into your own.
-
-In this post I'm going to describe the approaches **for my very specific use
-case** from the basic up to the complex.
 
 
 
 # What kind of machine learning are we talking about here?
 
-I am mostly interesting in image analysis. I am interested in sizing objects
-accurately and discerning other details about the objects: shape, number
-density. I'm therefore interested in image segmentation (classification): where
+I am primarily interesting in image analysic. I am interested in object
+detection and hence discerning details about the objects: size, shape, number
+density. I'm therefore interested in *image segmentation* (classification): where
 an input image is turned into a segmentation mask that describes, for each
 pixel, what object it is. In my case, this is often simply black for no object,
 white for object.
@@ -85,12 +84,11 @@ learner.fit_one_cycle(3, 1e-3)
 {% endhighlight %}
 
 That wee program will segment images into two categories. Category 0 (or 'naw')
-for no ('naw') object, and cat 1 ('aye') for object present. Is that all you
-want to do? No! This is a very basic approach.
+for no ('naw') object, and category 1 ('aye') for object present. There are a
 
 
 
-# Let's add some complexity
+# Let's go deeper
 
 Using standard datasets (MNist, iris dataset) is unrealistic. These datasets are
 as clean as can be, they are perfectly classified with no false
@@ -127,33 +125,36 @@ hope! We need to check the training results. How good was the training? If we
 apply the model, do we get good masks out?
 
 
+
 ## Calculating confidence
 
 How do we calculate confidence in the output from the model? Let's look at the
-example above. The model outputs a tensor of activations of the final
-layer for each of the classes. If we're analysing 100px by 100px images, and we
-have two classes, then we expect this tensor to have a shape of `(2, 100, 100)`.
-This is essentially two 100x100 images, one for each class, where each pixel is
-an activation value. Roughly speaking, the class with the larger value is the
-chosen class for each pixel. But can the machine always choose 'a' or 'b'? Can't
-it ever be stumped? Perhaps there should be a third option: **none of the
-above**.
+example above. The model outputs a tensor of activations of the final layer for
+each of the classes. If we're analysing 100px by 100px images, and we have two
+classes, then we expect this tensor to have a shape of `(2, 100, 100)`.  This is
+essentially two 100x100 images, one for each class, where each pixel is an
+*activation value*. What I'm describing here is sort-of a fuzzy [one-hot
+encoding](https://en.wikipedia.org/wiki/One-hot) - where you don't report a
+*class* directly for your input, you report the *confidence* in each class. This
+allows you to decide yourself if the confidence is significant and a class has
+been decided, or if a class is just a guess and the model is decidedly
+un-confident in the result.
 
-"Activation" is just just whatever number is the result of summing the weighted
-and biased value of the neurons in the layer behind - I mean it is a pretty
-arbitrary value. We want some way to normalise or convert this to a percentage.
-Then we can assess using our monkey brains whether the class chosen for a pixel
-should be 'aye' or 'naw', or if the machine can't tell, an important third
-option.
+Roughly speaking, the class with the larger activation value is the
+chosen class for each pixel.
 
 
+## Metrics
+
+Metrics are descriptors for comparing ML outputs and targets. [Loss
+functions](https://en.wikipedia.org/wiki/Loss_function) describe how well or
+badly a particular set of weights and biases perform as compared to a ground
+truth - and are a specific kind of metric which is used during training of the
+model. Other metrics are useful for us to use in comparing training runs.
+
+Some common metrics are
+- F1 score (dice similarity coefficient)
+- Cross entropy loss
 
 
-# Under the bonnet
 
-Neural networks have come a long way since their beginning (see [my first ML post]({% post_url 2020-02-22-neural_networks %}) )
-for a run down on some of the history. Modern neural networks are more than just
-connected layers; they have different operations gluing the layers together
-performing edge and feature detection using convolution, creating highly
-effective and highly efficient pattern recognition tools. - leaps and bounds
-ahead of the linear function model they were back in the 50s!
