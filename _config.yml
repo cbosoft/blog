@@ -4,8 +4,8 @@ plugins:
 permalink:        pretty
 
 title:            CMJB
-tagline:          'Ramblings about science and stuff'
-description:      'Read this blog for ramblings about whatever has me up at night this week.'
+tagline:          'Software and science and games'
+description:      'Software and science and games'
 url:              'http://cbosoft.github.io'
 baseurl:          ''
 
