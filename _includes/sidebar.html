@@ -13,22 +13,9 @@
       
 
       <hr />
-      <a class="sidebar-nav-item{% if page.url == site.baseurl %} active{% endif %}" href="/{{ site.baseurl }}">Home</a>
-
-      {% comment %}
-        The code below dynamically generates a sidebar nav of pages with
-        `layout: page` in the front-matter. See readme for usage.
-      {% endcomment %}
-
-      {% assign pages_list = site.pages %}
-      {% for node in pages_list %}
-        {% if node.title != null %}
-          {% if node.layout == "page" %}
-          <a class="sidebar-nav-item{% if page.url == node.url %} active{% endif %}" href="{{ node.url }}">{{ node.title }}</a>
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-         <hr />
+      <i class="fas fa-home"></i>&nbsp;<a href="/{{ site.baseurl }}">Home</a><br />
+      &nbsp;<i class="fas fa-info"></i>&nbsp;&nbsp;&nbsp;<a href="/about">About</a>
+      <hr />
     <i class="fab fa-github"></i>&nbsp;<a href="https://github.com/cbosoft">github</a>&nbsp;
     <i class="fab fa-twitter"></i>&nbsp;<a href="https://twitter.com/cbosoft">twitter</a><br />
     <i class="fab fa-itch-io"></i>&nbsp;<a href="https://cbosoft.itch.io/">itch.io</a>&nbsp;
