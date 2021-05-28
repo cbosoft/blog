@@ -167,16 +167,85 @@ speaking).
 I mentioned this could do with some light wrapping, and you can see why. The
 set-up and tear-down part, the error handling calls, this kinda stuff could be
 tidied up into a class. We also have to worry about mixing; we've got a tone
-generated here but what about other sounds getting added in?
+generated here but what about other sounds getting mixed in?
 
 A header for the class might look like:
 
 {% highlight C++ %}
-class AudioManager {
-public:
-    AudioManager();
-    ~AudioManager();
+// "manager.hpp"
+#pragma once
+#include <list>
+#include <array>
 
-    void play_sound(int sound_id);
+#define _SND_BUFFER_SIZE 256
+
+typedef std::array<float, _SND_BUFFER_SIZE*2> AudioBuffer;
+typedef std::array<float, _SND_BUFFER_SIZE> AudioMonoBuffer;
+
+class Sound;
+class SoundManager {
+public:
+    static SoundManager &ref();
+    SoundManager(const SoundManager &other) =delete;
+    SoundManager &operator=(SoundManager &other) =delete;
+    ~SoundManager();
+
+    void add_sound(Sound *sound);
+    void remove_sound(Sound *sound);
+
+private:
+    SoundManager();
+    void start();
+    void stop();
+
+    AudioBuffer &get_buffer();
+
+    std::list<Sound *> _sounds;
+    AudioBuffer _buffer;
+    Pa_Stream *_stream;
+
+    friend int stream_run_callback(
+        const void *input_buffer, void *output_buffer,
+        unsigned long frames_per_buffer,
+        const PaStreamCallbackTimeInfo* time_info,
+        PaStreamCallbackFlags status_flags, void *user_data);
 };
 {% endhighlight %}
+
+The manager is a singleton, enforced by private constructor and deleted copy
+constructor and assignment operator. Upon construction, the portaudio library is
+initialised and an audio stream is started. A callback function is run by the
+audio thread, which fetches audio information from each currently playing sound
+and mixes together storing the result in the `AudioBuffer`, which can be played
+by portaudio.
+
+The `Sound` class is an abstract class which manages the generation or reading
+in of a buffer of single channel audio.
+
+{% highlight C++ %}
+// "sound.hpp"
+#pragma once
+
+#include "manager.hpp"
+
+class Sound {
+public:
+    Sound();
+    virtual ~Sound();
+
+    AudioMonoBuffer get_mono_buffer();
+
+    [[nodiscard]] bool is_playing() const;
+    void play();
+    void pause();
+
+private:
+    bool _is_playing;
+};
+{% endhighlight %}
+
+The sound manager gets a buffer from each sound that is currently playing, and
+mixes them together. The `Sound` objects manage the generation or reading of
+audio data.
+
+
