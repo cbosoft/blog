@@ -282,3 +282,8 @@ for i in trange(n_epochs, unit='epochs'):
             vbn += 1
 writer.close()
 {% endhighlight %}
+
+# Further Reading
+- https://pytorch.org/tutorials/recipes/recipes/tensorboard_with_pytorch.html
+- https://towardsdatascience.com/a-complete-guide-to-using-tensorboard-with-pytorch-53cb2301e8c3
+- https://pytorch.org/tutorials/intermediate/tensorboard_tutorial.html
