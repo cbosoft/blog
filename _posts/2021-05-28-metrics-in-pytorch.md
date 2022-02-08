@@ -3,6 +3,7 @@ title: Metrics in Pytorch
 layout: post
 excerpt: "Metrics are used in machine learning to gauge how well a model is performing; in this post I discuss some of the terminology and how to calculate the metrics using `Pytorch`/`torchmetrics` and displayed using the excellent `tensorboard`."
 tags: ml software-dev
+technologies: Python, PyTorch, Tensorboard
 ---
 
 # Training and Metrics

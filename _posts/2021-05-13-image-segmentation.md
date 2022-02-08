@@ -3,6 +3,7 @@ title: Image Segmentation and Machine Learning
 layout: post
 excerpt: Working with real data when segmenting images
 tags: ml
+technologies: Python, PyTorch
 ---
 
 Time to write the "Hello, World!" of data science blogging; a tutorial on
@@ -29,7 +30,7 @@ crystallise out of solution.
  Image segmentation is really, really easy at a very very high level using the
 `fastai` library:
 
-{% highlight python%}
+{% highlight python %}
 from fastai.vision.all import *
 {% endhighlight %}
 
