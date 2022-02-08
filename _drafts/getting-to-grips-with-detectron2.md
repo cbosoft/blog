@@ -34,13 +34,22 @@ The FPN extracts features from the input image at different scales. These featur
 
 The RPN generates a list of regions (boxes) on the image along with an "object-ness" score - **deciding** whether the region contains an object (something in one of the classes) or background (a lack of object). These regions are **pooled** (reduced in number) within the RPN to give some longlist of proposed boxes. 
 
-Proposed boxes are fed, along with the image features from earlier, into the ROI head where the objects are **classified** and the boxes are further **pooled** into a shortlist. This shortlist is the output - a list of regions and classes in the image. This is not all, though. Not shown in Honda's diagram is the mask head. This head segments the region adding information in the form of **segmenting object boundaries** and another.
+Proposed boxes are fed, along with the image features from earlier, into the ROI head where the objects are **classified** and the boxes are further **pooled** into a shortlist. This shortlist is the output - a list of regions and classes in the image. This is not all, though. Not shown in Honda's diagram is the mask head. This head segments the region adding information in the form of **segmenting object boundaries** and another. Finally, each instance is given an **overall confidence score**.
 
 # Decisions and Logic
 
 How does the detectron make decisions? How does it narrow down the bboxes? How is the thresholding performed? How does it calculate confidence? These are some very important questions for anyone using the Detectron (or any ML model). Answering these questions will give some confidence in the predictions of the model.
 
 In the previous section, I highlighted the decisions made by the network: what is a good region? Does this region contain an object, or nah? What object is in this region? Where does the object begin/end?
+
+## 1. Object-ness
+## 2. Longlist ROI pooling
+## 3. Classification
+## 4. Shortlist ROI pooling
+## 5. Segmentation
+`mask_heads`
+## 6. Overall score
+overall score that drton gives you is the bbox score from `box_predictor`
 
 # Reading list
 1. [Detectron 2 Tutorials](https://detectron2.readthedocs.io/en/latest/tutorials/index.html)
