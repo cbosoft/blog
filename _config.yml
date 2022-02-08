@@ -13,6 +13,6 @@ author:
   name:           'Chris Boyle'
   url:            'https://github.com/cbosoft'
 
-paginate:         5
+paginate:         10
 include:
   - img
