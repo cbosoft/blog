@@ -1,0 +1,19 @@
+div.sidebaricons {
+	display: inline-block;
+	margin-left: 30%;
+	width: 10%;
+	text-align: center;
+}
+div.sidebarlinks {
+	display:  inline-block;
+	width:  55%;
+}
+div.halfsidebaricons {
+	display: inline-block;
+	width: 10%;
+	text-align: center;
+}
+div.halfsidebarlinks {
+	display:  inline-block;
+	width:  35%;
+}
