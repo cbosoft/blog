@@ -1,5 +1,5 @@
 ---
 layout: tagpage
-title: "Tag: Data Analysis"
 tag: data-analysis
+description: "Posts related to data analysis or signal processing."
 ---

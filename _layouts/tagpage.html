@@ -3,11 +3,45 @@ layout: default
 ---
 <!-- tags brought to you by https://longqian.me/2017/02/09/github-jekyll-tag/ -->
 <div class="post">
-<h1>Tag: {{ page.tag }}</h1>
+<h1>
+{% if page.title %}
+{{ page.title }}
+{% else %}
+Tag: {{ page.tag }}
+{% endif %}
+
+</h1>
+<p>{{ page.description }}</p>
 <ul>
 {% for post in site.tags[page.tag] %}
-  <li><a href="{{ post.url }}">{{ post.title }}</a> ({{ post.date | date_to_string }})<br>
-    {{ post.description }}
+  <li>
+      <a href="{{ post.url }}">
+        {% if post.layout == "post" %}
+        {{ post.title }}
+        {% elsif post.layout == "projectpage" %}
+        {{ post.project }}
+        {% endif %}
+      </a>
+
+      {% if post.layout == "projectpage" %}
+      {% assign techs = post.technologies | split: ", " %}
+      {% for tech in techs %}
+      {% assign dctech = tech | downcase %}
+      {% if dctech contains "rust" %}
+      <i class="fab fa-rust"></i>
+      {% elsif dctech contains "python" %}
+      <i class="fab fa-python"></i>
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+
+      <small>{{ post.date | date_to_string }}</small>
+      <br />
+    {% if post.layout == "post" %}
+    {{ post.excerpt }}
+    {% elsif post.layout == "projectpage" %}
+    {{ post.elevator_pitch }}
+    {% endif %}
   </li>
 {% endfor %}
 </ul>

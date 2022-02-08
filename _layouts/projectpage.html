@@ -1,0 +1,65 @@
+---
+layout: default
+---
+
+<div class="page">
+
+  <h1>Project: {{ page.project }}</h1>
+  <dl>
+    <!-- <dt>Project name:</dt><dd>{{ page.project }}</dd> -->
+    <dt>Elevator pitch:</dt><dd>{{ page.elevator_pitch }} </dd>
+    <dt>Technologies used:</dt><dd>
+<!-- {% assign maintech = page.technologies | downcase | truncatewords: 1, "" %} -->
+{% assign techs = page.technologies | split: ", " %}
+{% for tech in techs %}
+{% assign dctech = tech | downcase %}
+{% if dctech contains "rust" %}
+<i class="fab fa-rust"></i>
+{% elsif dctech contains "python" %}
+<i class="fab fa-python"></i>
+{% else %}
+&centerdot;
+{% endif %}
+{{ tech }}
+{% endfor %}
+    <!-- {{ page.technologies }} -->
+  </dd>
+    <dt>Repo:</dt><dd>
+      <i class="fab fa-github">&nbsp;</i><a href="https://{{ page.repo }}">{{ page.repo }}</a></dd>
+    <dt>Status:</dt><dd>
+  {% case page.status %}
+    {% when "Released" %}
+      <i class="fas fa-box-open"></i>
+    {% when "On hold", "Hold", "Paused" %}
+      <i class="fas fa-pause"></i>
+    {% when "In alpha", "Alpha" %}
+      <i class="fas fa-hammer"></i>
+  {% endcase %}
+    {{ page.status }}</dd>
+    <dt>Tags:</dt><dd>
+  {% for tag in page.tags %}
+    {% capture tag_name %}{{ tag }}{% endcapture %}
+    <a href="/tag/{{ tag_name }}"><code class="highligher-rouge"><nobr>{{ tag_name }}</nobr></code>&nbsp;</a>
+  {% endfor %}</dd>
+  </dl>
+
+  <hr style="border-color: #ccc; margin: 10px 0 10px 0;"/>
+  {{ content }}
+
+</div>
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    {% for post in site.related_posts limit:3 %}
+      <li>
+        <h3>
+          <a href="{{ post.url }}">
+            {{ post.title }}
+            <small>{{ post.date | date_to_string }}</small>
+          </a>
+        </h3>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
