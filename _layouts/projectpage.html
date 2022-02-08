@@ -13,10 +13,16 @@ layout: default
 {% assign techs = page.technologies | split: ", " %}
 {% for tech in techs %}
 {% assign dctech = tech | downcase %}
-{% if dctech contains "rust" %}
+{% if dctech == "rust" %}
 <i class="fab fa-rust"></i>
-{% elsif dctech contains "python" %}
+{% elsif dctech == "python" %}
 <i class="fab fa-python"></i>
+{% elsif dctech == "c++" %}
+<i class="devicon-cplusplus-plain"></i>
+{% elsif dctech == "c" %}
+<i class="devicon-c-plain"></i>
+{% elsif dctech == "bash" %}
+<i class="devicon-bash-plain"></i>
 {% else %}
 &centerdot;
 {% endif %}

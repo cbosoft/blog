@@ -16,36 +16,48 @@ title: Home
       </a>
     </h1>
 
-    <span class="post-date">{{ post.date | date_to_string }}</span>
+    <span class="post-date">
+      {{ post.date | date_to_string }}
+      {% if post.technologies %}
+        {% assign techs = post.technologies | split: ", " %}
+        {% for tech in techs %}
+          {% assign dctech = tech | downcase %}
+          {% if dctech == "rust" %}
+            <i class="fab fa-rust"></i>
+          {% elsif dctech == "python" %}
+            <i class="fab fa-python"></i>
+          {% elsif dctech == "c++" %}
+            <i class="devicon-cplusplus-plain"></i>
+          {% elsif dctech == "c" %}
+            <i class="devicon-c-plain"></i>
+      {% elsif dctech == "bash" %}
+        <i class="devicon-bash-plain"></i>
+          {% else %}
+            &centerdot;
+          {% endif %}
+          {{ tech }}
+        {% endfor %}
+      {% endif %}
 
     {% if post.layout == "post" %}
-    {{ post.excerpt }}
+    </span>
+      {{ post.excerpt }}
     {% elsif post.layout == "projectpage" %}
-    {% assign techs = post.technologies | split: ", " %}
-    {% for tech in techs %}
-    {% assign dctech = tech | downcase %}
-    {% if dctech contains "rust" %}
-    <i class="fab fa-rust"></i>
-    {% elsif dctech contains "python" %}
-    <i class="fab fa-python"></i>
-    {% else %}
-    &centerdot;
-    {% endif %}
-    {{ tech }}
-    {% endfor %}
-    <br />
-    <!-- <i class="fas fa-circle"></i> -->
-    {% case post.status %}
-    {% when "Released" %}
-      <i class="fas fa-box-open"></i>
-    {% when "On hold", "Hold", "Paused" %}
-      <i class="fas fa-pause"></i>
-    {% when "In alpha", "Alpha" %}
-      <i class="fas fa-hammer"></i>
-    {% endcase %}
-    {{ post.status }} <i class="fab fa-github">&nbsp;</i><a href="https://{{ post.repo }}">{{ post.repo }}</a>
-    <br />
-    {{ post.elevator_pitch }}
+      <!-- <i class="fas fa-circle"></i> -->
+      &centerdot;
+      {% case post.status %}
+      {% when "Released" %}
+        <i class="fas fa-box-open"></i>
+      {% when "On hold", "Hold", "Paused" %}
+        <i class="fas fa-pause"></i>
+      {% when "In alpha", "Alpha" %}
+        <i class="fas fa-hammer"></i>
+      {% endcase %}
+      {{ post.status }}
+      &centerdot;
+      <a href="https://{{ post.repo }}"><i class="fab fa-github"></i> Repo</a>
+    </span>
+      {{ post.elevator_pitch }}
     {% endif %}
   </div>
   {% endfor %}
