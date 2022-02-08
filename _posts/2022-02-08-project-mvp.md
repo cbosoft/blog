@@ -13,7 +13,7 @@ status: Released
 
 The architecture of a machine learning model decides how the model "thinks". A whole bunch of research is dedicated to figuring out new and improved ways of designing networks. However, the maths gets a little complicated - there are a lot of layers and the size of each is important to consider. The smallest layer gives the reduced features considered by the model. If this restriction is too small, the model won't have enough information to act upon. If the restriction is too large, then the model will have *too much* information available and may take a long time to train, or be so complex that it doesn't learn.
 
-Enter, MVP: a script to take a given model layout and sketch it out in a rigorous manner so that an intuitive picture of your design network can be obtained.
+Enter, MVP: a script which, given an ML model, sketches it out in a rigorous manner so that an intuitive picture of your design network can be obtained.
 
 # Challenges
 
@@ -24,7 +24,7 @@ This was the first challenge, and the easiest thanks to the python library [`net
 Drawing programmatically in an aesthetically pleasing way is not too hard. I chose to output LaTeX code from my script, which can be compiled to PDF using `pdflatex` or any other LaTeX compiler. This PDF can be converted to image format if desired using e.g. imagemagick's `convert`:
 
 ```bash
-convert -density 384 "{pdf_fn}" -quality 100 -alpha remove "${PDF_FILE}"
+convert -density 384 "${PDF_FILE}" -quality 100 -alpha remove "${PNG_FILE}"
 ```
 
 Each node in the graph is drawn as a rectangle in 45&deg; perspective. The height of the rectangle gives the number of features, while the width gives the channels. In this way, we have a graphical representation of the size of data we're dealing with at every stage.
