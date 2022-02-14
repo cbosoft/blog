@@ -18,44 +18,25 @@ title: Home
 
     <span class="post-date">
       {{ post.date | date_to_string }}
-      {% if post.technologies %}
-        {% assign techs = post.technologies | split: ", " %}
-        {% for tech in techs %}
-          {% assign dctech = tech | downcase %}
-          {% if dctech == "rust" %}
-            <i class="fab fa-rust"></i>
-          {% elsif dctech == "python" %}
-            <i class="fab fa-python"></i>
-          {% elsif dctech == "c++" %}
-            <i class="devicon-cplusplus-plain"></i>
-          {% elsif dctech == "c" %}
-            <i class="devicon-c-plain"></i>
-      {% elsif dctech == "bash" %}
-        <i class="devicon-bash-plain"></i>
-          {% else %}
-            &centerdot;
-          {% endif %}
-          {{ tech }}
-        {% endfor %}
-      {% endif %}
+      {% for tag in post.tags %}
+        {% include ignore_tag.html %}
+        &centerdot;
+        {% assign tech=tag %}
+        {% include icon_for_tech.html %}
+        <a href="/tag/{{ tag }}">{{ tag }}</a>
+      {% endfor %}
 
     {% if post.layout == "post" %}
     </span>
       {{ post.excerpt }}
     {% elsif post.layout == "projectpage" %}
       <!-- <i class="fas fa-circle"></i> -->
-      &centerdot;
-      {% case post.status %}
-      {% when "Released" %}
-        <i class="fas fa-box-open"></i>
-      {% when "On hold", "Hold", "Paused" %}
-        <i class="fas fa-pause"></i>
-      {% when "In alpha", "Alpha" %}
-        <i class="fas fa-hammer"></i>
-      {% endcase %}
-      {{ post.status }}
-      &centerdot;
+      <br />
       <a href="https://{{ post.repo }}"><i class="fab fa-github"></i> Repo</a>
+      &centerdot;
+      {% assign p=post %}
+      {% include icon_for_project_status.html %}
+      {{ post.status }}
     </span>
       {{ post.elevator_pitch }}
     {% endif %}

@@ -1,10 +1,9 @@
 ---
 project: "MVP - ML Visualised using Python"
 elevator_pitch: "Script to visualise structure of ML model, aiding in design."
-technologies: "Python, LaTeX, NetworkX"
 repo: "github.com/cbosoft/mvp"
 layout: projectpage
-tags: software-dev ml projects
+tags: software-dev ml projects Python
 status: Released
 ---
 

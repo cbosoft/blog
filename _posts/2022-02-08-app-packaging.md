@@ -2,7 +2,7 @@
 title: "Packaging apps on MacOS."
 layout: post
 excerpt: "I'm developing an app and need to package it so it can be shared, here's what I've learned about packaging Windows and mac apps."
-tags: software-dev
+tags: software-dev MacOS
 ---
 
 # The App

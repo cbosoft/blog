@@ -1,0 +1,17 @@
+{% assign dctech = tech | downcase %}
+{% case dctech %}
+{% when "rust" %}
+<i class="fab fa-rust"></i>
+{% when "python" %}
+<i class="fab fa-python"></i>
+{% when "c++" %}
+<i class="devicon-cplusplus-plain"></i>
+{% when "c" %}
+<i class="devicon-c-plain"></i>
+{% when "bash" %}
+<i class="devicon-bash-plain"></i>
+{% when "raspberrypi" %}
+<i class="devicon-raspberrypi-line"></i>
+{% when "linux" %}
+<i class="devicon-linux-plain"></i>
+{% endcase %}

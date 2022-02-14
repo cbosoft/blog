@@ -2,8 +2,7 @@
 title: Image Segmentation and Machine Learning
 layout: post
 excerpt: Working with real data when segmenting images
-tags: ml
-technologies: Python, PyTorch
+tags: ml Python PyTorch
 ---
 
 Time to write the "Hello, World!" of data science blogging; a tutorial on

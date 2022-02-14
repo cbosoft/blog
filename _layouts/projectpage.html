@@ -10,37 +10,21 @@ layout: default
     <dt>Elevator pitch:</dt><dd>{{ page.elevator_pitch }} </dd>
     <dt>Technologies used:</dt><dd>
 <!-- {% assign maintech = page.technologies | downcase | truncatewords: 1, "" %} -->
-{% assign techs = page.technologies | split: ", " %}
+<!-- {% assign techs = page.technologies | split: ", " %} -->
+
+{% assign p=page %}
+{% include tech_from_tags.html %}
 {% for tech in techs %}
-{% assign dctech = tech | downcase %}
-{% if dctech == "rust" %}
-<i class="fab fa-rust"></i>
-{% elsif dctech == "python" %}
-<i class="fab fa-python"></i>
-{% elsif dctech == "c++" %}
-<i class="devicon-cplusplus-plain"></i>
-{% elsif dctech == "c" %}
-<i class="devicon-c-plain"></i>
-{% elsif dctech == "bash" %}
-<i class="devicon-bash-plain"></i>
-{% else %}
-&centerdot;
-{% endif %}
-{{ tech }}
+{% include icon_for_tech.html %}
+<a href ="/tag/{{ tech }}">{{ tech }}</a>
 {% endfor %}
     <!-- {{ page.technologies }} -->
   </dd>
     <dt>Repo:</dt><dd>
       <i class="fab fa-github">&nbsp;</i><a href="https://{{ page.repo }}">{{ page.repo }}</a></dd>
     <dt>Status:</dt><dd>
-  {% case page.status %}
-    {% when "Released" %}
-      <i class="fas fa-box-open"></i>
-    {% when "On hold", "Hold", "Paused" %}
-      <i class="fas fa-pause"></i>
-    {% when "In alpha", "Alpha" %}
-      <i class="fas fa-hammer"></i>
-  {% endcase %}
+      {% assign p=page %}
+      {% include icon_for_project_status.html %}
     {{ page.status }}</dd>
     <dt>Tags:</dt><dd>
   {% for tag in page.tags %}

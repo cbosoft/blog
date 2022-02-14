@@ -1,0 +1,8 @@
+{% case p.status %}
+  {% when "Released" %}
+    <i class="fas fa-box-open"></i>
+  {% when "On hold", "Hold", "Paused" %}
+    <i class="fas fa-pause"></i>
+  {% when "In alpha", "Alpha" %}
+    <i class="fas fa-hammer"></i>
+{% endcase %}

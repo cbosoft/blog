@@ -6,10 +6,16 @@ layout: default
   <h1 class="post-title">{{ page.title }}</h1>
   <span class="post-date">{{ page.date | date_to_string }}</span>
   <span>Tags:
-  {% for tag in page.tags %}
-    {% capture tag_name %}{{ tag }}{% endcapture %}
-    <a href="/tag/{{ tag_name }}"><code class="highligher-rouge"><nobr>{{ tag_name }}</nobr></code>&nbsp;</a>
-  {% endfor %}
+    {% assign first=true %}
+    {% for tech in page.tags %}
+      {% if first != true %}
+      &centerdot;
+      {% else %}
+      {% assign first=false %}
+      {% endif %}
+      {% include icon_for_tech.html %}
+      <a href="/tag/{{ tech }}">{{ tech }}</a>
+    {% endfor %}
   </span>
   <hr style="border-color: #ccc; margin: 10px 0 10px 0;"/>
   {{ content }}

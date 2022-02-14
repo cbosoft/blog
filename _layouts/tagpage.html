@@ -14,41 +14,7 @@ Tag: {{ page.tag }}
 <p>{{ page.description }}</p>
 <ul>
 {% for post in site.tags[page.tag] %}
-  <li>
-      <a href="{{ post.url }}">
-        {% if post.layout == "post" %}
-        {{ post.title }}
-        {% elsif post.layout == "projectpage" %}
-        {{ post.project }}
-        {% endif %}
-      </a>
-
-      {% if post.layout == "projectpage" %}
-      {% assign techs = post.technologies | split: ", " %}
-      {% for tech in techs %}
-      {% assign dctech = tech | downcase %}
-      {% if dctech == "rust" %}
-      <i class="fab fa-rust"></i>
-      {% elsif dctech == "python" %}
-      <i class="fab fa-python"></i>
-      {% elsif dctech == "c++" %}
-        <i class="devicon-cplusplus-plain"></i>
-      {% elsif dctech == "c" %}
-        <i class="devicon-c-plain"></i>
-      {% elsif dctech == "bash" %}
-        <i class="devicon-bash-plain"></i>
-      {% endif %}
-      {% endfor %}
-      {% endif %}
-
-      <small>{{ post.date | date_to_string }}</small>
-      <br />
-    {% if post.layout == "post" %}
-    {{ post.excerpt }}
-    {% elsif post.layout == "projectpage" %}
-    {{ post.elevator_pitch }}
-    {% endif %}
-  </li>
+{% include tagpage_post.html %}
 {% endfor %}
 </ul>
 </div>
