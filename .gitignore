@@ -1,6 +1,7 @@
-# Ignore docs files
+# Ignore outputs
 _gh_pages
 _site
+blog
 .ruby-version
 .jekyll-cache
 
@@ -29,6 +30,8 @@ nbproject
 *.sublime-project
 *.sublime-workspace
 .idea
+Gemfile
+Gemfile.lock
 
 # Komodo
 *.komodoproject
