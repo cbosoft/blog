@@ -20,6 +20,5 @@ div.halfsidebarlinks {
 #centre {
 	display: block;
 	margin: auto;
-	width: 75%;
-	height: 500px;
+	width: fit-content;
 }
