@@ -17,3 +17,9 @@ div.halfsidebarlinks {
 	display:  inline-block;
 	width:  35%;
 }
+#centre {
+	display: block;
+	margin: auto;
+	width: 75%;
+	height: 500px;
+}
