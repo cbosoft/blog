@@ -129,7 +129,7 @@ When changing from TOML to YAML, all I had to do was change out `toml::from_str`
 The project has served its purpose, and I have gotten a bit more used to `Rust` now. `Rust` has some great features. I especially like `match ... {}` syntax for making decisions based on return value - especially when paired with the `Result` type for error checking. The borrow checker has been the source of some annoyance - but only because I'm not yet used to it.
 
 
-## Appendix: the anme
+## Appendix: the name
 
 FeO is the chemical symbol for iron oxide AKA rust, then the rest is just "Text Adventure Engine" abbreviated to give FeOTAE.
 
