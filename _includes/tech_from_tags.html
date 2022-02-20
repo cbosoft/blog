@@ -3,7 +3,7 @@
 {% for tag in p.tags %}
 {% assign dctag=tag | downcase %}
 {% case dctag %}
-{% when "python", "c++", "c", "pytorch" %}
+{% when "python", "c++", "c", "pytorch", "rust" %}
 {% assign techs=techs | append: " " | append: tag %}
 {% else %}
 {% assign tags=tags | append: " " | append: tag %}

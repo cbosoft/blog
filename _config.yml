@@ -7,7 +7,7 @@ title:            CMJB
 tagline:          'Software and science and games'
 description:      'Software and science and games'
 url:              'http://cbosoft.github.io'
-baseurl:          ''
+baseurl:          '/blog/'
 
 author:
   name:           'Chris Boyle'

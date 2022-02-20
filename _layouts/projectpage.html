@@ -16,7 +16,10 @@ layout: default
 {% include tech_from_tags.html %}
 {% for tech in techs %}
 {% include icon_for_tech.html %}
-<a href ="/tag/{{ tech }}">{{ tech }}</a>
+<a href ="{{ site.baseurl }}tag/{{ tech }}">{{ tech }}</a>
+{% endfor %}
+{% for tech in page.technologies %}
+&centerdot; {{ tech }}
 {% endfor %}
     <!-- {{ page.technologies }} -->
   </dd>
@@ -29,7 +32,7 @@ layout: default
     <dt>Tags:</dt><dd>
   {% for tag in page.tags %}
     {% capture tag_name %}{{ tag }}{% endcapture %}
-    <a href="/tag/{{ tag_name }}"><code class="highligher-rouge"><nobr>{{ tag_name }}</nobr></code>&nbsp;</a>
+    <a href="{{ site.baseurl }}tag/{{ tag_name }}"><code class="highligher-rouge"><nobr>{{ tag_name }}</nobr></code>&nbsp;</a>
   {% endfor %}</dd>
   </dl>
 
@@ -44,7 +47,7 @@ layout: default
     {% for post in site.related_posts limit:3 %}
       <li>
         <h3>
-          <a href="{{ post.url }}">
+          <a href="{{ site.baseurl }}{{ post.url }}">
             {{ post.title }}
             <small>{{ post.date | date_to_string }}</small>
           </a>

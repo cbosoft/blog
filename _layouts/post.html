@@ -14,7 +14,7 @@ layout: default
       {% assign first=false %}
       {% endif %}
       {% include icon_for_tech.html %}
-      <a href="/tag/{{ tech }}">{{ tech }}</a>
+      <a href="{{ site.baseurl }}tag/{{ tech }}">{{ tech }}</a>
     {% endfor %}
   </span>
   <hr style="border-color: #ccc; margin: 10px 0 10px 0;"/>
@@ -27,7 +27,7 @@ layout: default
     {% for post in site.related_posts limit:3 %}
       <li>
         <h3>
-          <a href="{{ post.url }}">
+          <a href="{{ site.baseurl }}{{ post.url }}">
             {{ post.title }}
             <small>{{ post.date | date_to_string }}</small>
           </a>
