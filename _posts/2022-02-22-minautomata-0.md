@@ -293,7 +293,6 @@ Let's update the update function with this rule:
                 if (v == 255) && (self.getv(x, y+1)[0] == 0) {
                     self.setv(x, y, [0, 0, 0, 255]);
                     self.setv(x, y+1, [255; 4]);
-                    self.setp(x, y+1, true);
                 }
                 // otherwise, do nothing
 
