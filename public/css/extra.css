@@ -22,3 +22,15 @@ div.halfsidebarlinks {
 	margin: auto;
 	width: fit-content;
 }
+
+div.colourbox {
+	display: block;
+	margin-left: 5%;
+	margin-right: 5%;
+	background-color: rgb(226, 226, 226);
+	border-style: hidden;
+	border-width: 0px;
+	border-radius: 5px;
+	padding: 5px;
+	margin-bottom: 1em;
+}
