@@ -11,7 +11,7 @@ has_diagrams: true
 # Motivation
 A couple [weeks ago]({% post_url 2022-02-03-rust-lang %}) I started getting in to learning about rust. I have a habit of writing simple text adventure games when I learn a new language. I started this in high school when I was learning `C#` with a text-adventre version of Counter Strike - inspired by an [XKCD comic](https://xkcd.com/91/). I actually got really far with that, to the point where I had network based multiplayer kinda working, but then I abandoned the project as school and university took over.
 
-So I started a new text adventure to get into the swing of things with `Rust`. This went really well I think, I quite quickly arrived at a usable game enging. This was mostly facilitated by the rust package (sorry, crate) `serde` - a fantastic (de)serialisation library.
+So I started a new text adventure to get into the swing of things with `Rust`. This went really well I think, I quite quickly arrived at a usable game engine. This was mostly facilitated by the rust package (sorry, crate) `serde` - a fantastic (de)serialisation library.
 
 
 # Challenges
