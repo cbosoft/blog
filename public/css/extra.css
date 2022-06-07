@@ -20,6 +20,12 @@ div.halfsidebarlinks {
 	display: inline-block;
 	width: 75%;
 }
+
+figure.highlight {
+	margin: 0;
+	margin-inline-start: 0px;
+	margin-inline-end: 0px;
+}
 #centre {
 	display: block;
 	margin: auto;
