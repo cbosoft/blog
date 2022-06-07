@@ -25,5 +25,3 @@ tag](/tag/games) to see examples.
 
 Most of my posts here will centre around a project I've been working on - check
 them out on my [github](https://github.com/cbosoft).
-
-![logo](/img/logo_light_nobg.png)
