@@ -1,0 +1,19 @@
+{% assign isfirst="yes" %}
+
+<div class="tab">
+    {% for lang in languages %}
+    {% assign dclang=lang | downcase %}
+    {% assign caplang=dclang | capitalize %}
+    {% case dclang %}
+    {% when "c++" %}
+    {% assign tablang="TabCpp" %}
+    {% else %}
+    {% assign tablang="Tab" | append: caplang %}
+    {% endcase %}
+
+
+    <button {% if isfirst=="yes" %} id="defaultOpen" {% assign isfirst="no" %} {% endif %}
+        class="tablinks {{ tablang }}" onclick="tabClick(event, '{{ tablang }}')">{{ lang
+        }}</button>
+    {% endfor %}
+</div>

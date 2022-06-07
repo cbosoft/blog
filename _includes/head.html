@@ -8,14 +8,14 @@
 
   <title>
     {% if page.title == "Home" %}
-      {{ site.title }} &middot; {{ site.tagline }}
+    {{ site.title }} &middot; {{ site.tagline }}
     {% else %}
-      {{ page.title }} &middot; {{ site.title }}
+    {{ page.title }} &middot; {{ site.title }}
     {% endif %}
   </title>
 
   {% if site.tags != "" %}
-    {% include collecttags.html %}
+  {% include collecttags.html %}
   {% endif %}
 
   <!-- CSS -->
@@ -23,18 +23,22 @@
   <link rel="stylesheet" href="{{ site.baseurl }}public/css/syntax.css">
   <link rel="stylesheet" href="{{ site.baseurl }}public/css/hyde.css">
   <link rel="stylesheet" href="{{ site.baseurl }}public/css/extra.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com"> 
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> 
-  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=JetBrains+Mono:wght@500&family=Source+Sans+Pro:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ site.baseurl }}public/css/tabs.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=JetBrains+Mono:wght@500&family=Source+Sans+Pro:wght@400;700;900&display=swap"
+    rel="stylesheet">
 
-  <!-- Icons -->
-  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="{{ site.baseurl }}public/favicon.png">
-  <link rel="shortcut icon" href="{{ site.baseurl }}public/favicon.ico">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel=stylesheet>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.14.0/devicon.min.css">
+  < !--Icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="{{ site.baseurl }}public/favicon.png">
+    <link rel="shortcut icon" href="{{ site.baseurl }}public/favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel=stylesheet>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.14.0/devicon.min.css">
 
-  <!-- RSS -->
-  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
-  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- RSS -->
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="{{ site.baseurl }}public/js/tabs.js"></script>
 </head>
