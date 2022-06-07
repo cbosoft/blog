@@ -3,6 +3,7 @@ layout: post
 title: "Numba is crazy awesome"
 tags: Python
 excerpt: "JIT-compiled python can be <em>incredibly</em> fast. Who says Python can't be performant?"
+comments: true
 ---
 
 # Slow, maths-heavy code.
