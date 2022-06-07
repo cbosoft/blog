@@ -25,5 +25,4 @@ function tabClick(evt, target_class) {
     for (i = 0; i < targets.length; i++) {
         targets[i].style.display = "block";
     }
-    evt.currentTarget.focus();
 }
