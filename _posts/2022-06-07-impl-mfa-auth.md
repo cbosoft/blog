@@ -10,13 +10,13 @@ comments: true
 
 # Authenticator App
 
-These days it's impossible to go long without being pestered to set up MFA - Multi-Factor Authentication via something like a phone or via email. One method is using a so-called Authenticaor app installed on a smart phone to provide this second factor of security. This is great for security, and relatively convenient. How do these apps work?
+These days it's impossible to go long without being pestered to set up MFA - Multi-Factor Authentication via something like a phone or via email. One method is using an "Authenticator" app installed on a smart phone to provide this second factor of security. This is great for security, and relatively convenient. How do these apps work?
 
-When you're setting up MFA with a service, you are given a cod (or QR code), you scan this via your authenticator app. From then on your app generates (every thirty seconds or so) codes which can be used to authenticate access to the service.
+When you're setting up MFA with a service, you are given a code (text or QR code), you scan this via your authenticator app. From then on your app generates (every thirty seconds or so) One Time Password (OTP) codes which can be used to authenticate access to the service.
 
 The QR code contains a secret key which your app holds on to. Then, at any moment, the app can create an authentication code by doing *maths* with the key and the current time giving a code. The server does the same maths with the secret and the current time. If the codes are the same, then the authentication succeeds. This is a cryptographically secure - and convenient - authentication method.
 
-Note: this process requires no data to pass from the service to the authentication device (apart from at set up). In fact the authentication device doesn't even need to be connected to the internet. This limits vectors for attack and offers secure improvements over other methods such as email or SMS.
+Note: this process requires no data to pass from the service to the authentication device (apart from at set up). In fact the authentication device doesn't even need to be connected to the internet. This limits vectors for attack and offers security improvements over other methods such as email or SMS.
 
 # Methods: HOTP or TOTP?
 
@@ -26,9 +26,9 @@ HOTP is not often used, TOTP is much more common (verging on ubiquitous). The pr
 
 # Hash-based Message Authentication Code (HMAC)
 
-The HMAC mechanism is described in [RFC2104](https://datatracker.ietf.org/doc/html/rfc2104). This method uses a hash function (e.g. SHA-1, MD) and a secret key to (1) authenticate messages and (2) check data integrity.
+The HMAC mechanism is described in [RFC2104](https://datatracker.ietf.org/doc/html/rfc2104). This method uses a hash function (e.g. SHA-1, MD5) and a secret key to (1) authenticate messages and (2) check data integrity.
 
-A hashing algorithm works on blocks of bytes (of size B) and produces a hash of length L bytes.
+A hashing algorithm works on blocks of bytes (of size B) and produces a hash of length L bytes. These sizes depend on the algorithm. SHA-1 and MD5 use block sizes of 64 bytes but SHA-1 has digest size L of 20 bytes while MD5 has L=16 bytes.
 
 The HMAC algorithm is defined, in RFC2104, as:
 
@@ -242,7 +242,7 @@ This modification is very simple. Rather than using an incrementing counter, the
 T = (unix_time - t0) / x
 ```
 
-Just using that `T` moving factor as the counter value in the previous gives you the code we need to authenticate with all your favourite services.
+Just using that `T` moving factor as the counter value in the previous gives you the code we need to authenticate with all your favourite services. Common settings are `t0 = 0` and `x = 30`.
 
 {% include tab_bar.html %}
 
