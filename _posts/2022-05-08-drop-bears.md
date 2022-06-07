@@ -44,7 +44,7 @@ Drop bears, according to [CNN Travel](https://edition.cnn.com/travel/article/aus
 # Conclusions
 I hypothesised that the drop bear is cover story for eucalyptus tree branches falling on people's heads, whether to save face or to scare children away from danger. I have shown that drop bears and eucalyptus trees tend to co-occur. However, this misses many key facts: of course tales of drop bears will coincide with eucalyptus trees as they are very common across Australia and are prevalent in many large forests. In addition, bush fires will of course affect forested areas more (presence of fuel). However, the story does seem to make sense.
 
-Any thoughts/comments on this? Hit me up on [twitter](https://twitter.com/cbosoft)!
+Any thoughts/comments on this? Hit me up on [twitter](https://twitter.com/chrismjbo)!
 
 
 # References

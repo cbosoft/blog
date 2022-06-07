@@ -85,7 +85,7 @@ With a
 of the detection. This is then refined by passing further into the UNet which
 decodes features and upsamples back to the image size. I'm not 100% on the
 backbone and how it works - I'd be very grateful for any info ([tweet
-me](https://twitter.com/cbosoft)).
+me](https://twitter.com/chrismjbo)).
 
 # Where does the learning happen?
 
