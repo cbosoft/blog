@@ -4,18 +4,21 @@ div.sidebaricons {
 	width: 10%;
 	text-align: center;
 }
+
 div.sidebarlinks {
-	display:  inline-block;
-	width:  55%;
+	display: inline-block;
+	width: 55%;
 }
+
 div.halfsidebaricons {
 	display: inline-block;
-	width: 10%;
+	width: 20%;
 	text-align: center;
 }
+
 div.halfsidebarlinks {
-	display:  inline-block;
-	width:  35%;
+	display: inline-block;
+	width: 75%;
 }
 #centre {
 	display: block;
