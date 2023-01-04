@@ -10,52 +10,86 @@ layout: default
   <h1>Project: {{ page.project }}</h1>
   <dl>
     <!-- <dt>Project name:</dt><dd>{{ page.project }}</dd> -->
-    <dt>Elevator pitch:</dt><dd>{{ page.elevator_pitch }} </dd>
-    <dt>Technologies used:</dt><dd>
-<!-- {% assign maintech = page.technologies | downcase | truncatewords: 1, "" %} -->
-<!-- {% assign techs = page.technologies | split: ", " %} -->
+    <dt>Elevator pitch:</dt>
+    <dd>{{ page.elevator_pitch }} </dd>
+    <dt>Technologies used:</dt>
+    <dd>
+      <!-- {% assign maintech = page.technologies | downcase | truncatewords: 1, "" %} -->
+      <!-- {% assign techs = page.technologies | split: ", " %} -->
 
-{% assign p=page %}
-{% include tech_from_tags.html %}
-{% for tech in techs %}
-{% include icon_for_tech.html %}
-<a href ="{{ site.baseurl }}tag/{{ tech }}">{{ tech }}</a>
-{% endfor %}
-{% for tech in page.technologies %}
-&centerdot; {{ tech }}
-{% endfor %}
-    <!-- {{ page.technologies }} -->
-  </dd>
-    <dt>Repo:</dt><dd>
-      <i class="fab fa-github">&nbsp;</i><a href="https://{{ page.repo }}">{{ page.repo }}</a></dd>
-    <dt>Status:</dt><dd>
+      {% assign p=page %}
+      {% include tech_from_tags.html %}
+      {% for tech in techs %}
+      {% include icon_for_tech.html %}
+      <a href="{{ site.baseurl }}tag/{{ tech }}">{{ tech }}</a>
+      {% endfor %}
+      {% for tech in page.technologies %}
+      &centerdot; {{ tech }}
+      {% endfor %}
+      <!-- {{ page.technologies }} -->
+    </dd>
+    <dt>Repo:</dt>
+    <dd>
+      <i class="fab fa-github">&nbsp;</i><a href="https://{{ page.repo }}">{{
+        page.repo }}</a>
+    </dd>
+    <dt>Status:</dt>
+    <dd>
       {% assign p=page %}
       {% include icon_for_project_status.html %}
-    {{ page.status }}</dd>
-    <dt>Tags:</dt><dd>
-  {% for tag in page.tags %}
-    {% capture tag_name %}{{ tag }}{% endcapture %}
-    <a href="{{ site.baseurl }}tag/{{ tag_name }}"><code class="highligher-rouge"><nobr>{{ tag_name }}</nobr></code>&nbsp;</a>
-  {% endfor %}</dd>
+      {{ page.status }}</dd>
+    <dt>Tags:</dt>
+    <dd>
+      {% for tag in page.tags %}
+      {% capture tag_name %}{{ tag }}{% endcapture %}
+      <a href="{{ site.baseurl }}tag/{{ tag_name }}"><code
+          class="highligher-rouge"><nobr>{{ tag_name }}</nobr></code>&nbsp;</a>
+      {% endfor %}
+    </dd>
   </dl>
 
-  <hr style="border-color: #ccc; margin: 10px 0 10px 0;"/>
+  <hr style="border-color: #ccc; margin: 10px 0 10px 0;" />
   {{ content }}
 
 </div>
+
+{% if page.comments %}
+<div id="disqus_thread"></div>
+<script>
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables    */
+
+  var disqus_config = function () {
+    // this.page.url = "cmjb.tech/blog/{{ page.url }}";
+    // this.page.identifier = "{{ page.comments }}";
+    this.page.url = document.location.href;
+    this.page.identifier = document.location.pathname;
+  };
+  (function () { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = 'https://cmjb.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a
+    href="https://disqus.com/?ref_noscript">comments powered by
+    Disqus.</a></noscript>
+{% endif %}
 
 <div class="related">
   <h2>Related Posts</h2>
   <ul class="related-posts">
     {% for post in site.related_posts limit:3 %}
-      <li>
-        <h3>
-          <a href="{{ site.baseurl }}{{ post.url }}">
-            {{ post.title }}
-            <small>{{ post.date | date_to_string }}</small>
-          </a>
-        </h3>
-      </li>
+    <li>
+      <h3>
+        <a href="{{ site.baseurl }}{{ post.url }}">
+          {{ post.title }}
+          <small>{{ post.date | date_to_string }}</small>
+        </a>
+      </h3>
+    </li>
     {% endfor %}
   </ul>
 </div>
