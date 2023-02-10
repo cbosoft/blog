@@ -80,7 +80,7 @@ This was very quick to set up and I had a functional version finished in under a
 
 In addition to performing classification, I added the functionality to aid in the development of regression or rating tasks. The user is asked to choose which of two randomly selected images is more `$something` where `$something` is a quality of the image: like "in focus". This is useful for helping to design quantifiers of the specified quality. This could be useful for developing a dataset for regressing an indicator of that quality, however further processing would be required. 
 
-This project is also on [GitHub](https://github.com/cbosoft/imclasregan). The name this time is a portmanteau (mash up) of image classification and regression annotation.
+This project is also on [GitHub](https://github.com/cbosoft/imclasregan/tree/python-backend). The name this time is a portmanteau (mash up) of image classification and regression annotation.
 
 # Quality Regression
 
