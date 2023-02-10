@@ -2,7 +2,7 @@
 title: "Bevy games on iOS"
 layout: post
 excerpt: "Bevy (ECS driven Rust game engine) supports iOS, but not without some tinkering."
-tags: rust games software-dev
+tags: Rust games software-dev
 ---
 
 # Bevy

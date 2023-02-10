@@ -2,7 +2,7 @@
 layout: post
 title: "Digging into Multi-Factor Authentication"
 tags: Python Rust
-excerpt: "MFA apps use RFC-defined algorithms - let's figure out how they work an implement our own version."
+excerpt: "MFA apps use RFC-defined algorithms - let's figure out how they work and implement our own version."
 comments: true
 ---
 
