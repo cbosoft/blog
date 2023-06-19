@@ -84,7 +84,7 @@ This project is also on [GitHub](https://github.com/cbosoft/imclasregan/tree/pyt
 
 # Quality Regression
 
-Using the ["Dogs vs. Cats"](https://www.kaggle.com/competitions/dogs-vs-cats/rules) dataset, I annotated XXXX pairs images - marking which of each was more or less *foxy*. Foxy, of course, meaning fox-like, vulpine, having the attributes of a fox. This is a somewhat arbitrary qualitative measure. It primarily came down to the ears - pricked attentive ears where definitely a prime indicator for foxiness as I was annotating.
+Using the ["Dogs vs. Cats"](https://www.kaggle.com/competitions/dogs-vs-cats/rules) dataset, I annotated pairs of images - marking which of each was more or less *foxy*. Foxy, of course, meaning fox-like, vulpine, having the attributes of a fox. This is a somewhat arbitrary and subjective qualitative measure. For me, it primarily came down to the ears - pricked attentive ears where definitely a prime indicator for foxiness.
 
 The results are a series of pairs of items and an ordering within that pair.
 
