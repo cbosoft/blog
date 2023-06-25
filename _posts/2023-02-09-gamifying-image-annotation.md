@@ -10,9 +10,9 @@ tags: software-dev Python ml Rust
 
 Which of the below images is of a cat, and which is of a dog?
 
-<center>
-<img src="{{site.baseurl}}/img/gamifying-image-annotation/cat.jpg" style="display: inline-block; width: 40%;" />
-<img src="{{site.baseurl}}/img/gamifying-image-annotation/dog.jpg" style="display: inline-block; width: 40%;" />
+<center class="standout">
+<img src="{{site.baseurl}}/img/gamifying-image-annotation/cat.jpg" style="display: inline-block; width: 25vw;" />
+<img src="{{site.baseurl}}/img/gamifying-image-annotation/dog.jpg" style="display: inline-block; width: 25vw;" />
 <br/>
 <a href="https://en.wikipedia.org/wiki/Cat#/media/File:Cat_yawn_with_exposed_teeth_and_claws.jpg">(left)</a> <a href="https://en.wikipedia.org/wiki/Dog#/media/File:Big_and_little_dog.jpg">(right)</a>
 </center>
@@ -48,8 +48,8 @@ The immediate-mode GUI framework `eframe`/`egui` made building this project real
 
 In the end, I had a functional classification "game" running locally. The next step would be to compile to WASM and then chuck on a server: job done!
 
-<center>
-<img src="{{site.baseurl}}/img/gamifying-image-annotation/trusty_patches.png" style="display: inline-block; width: 40%;"/>
+<center class="standout">
+<img src="{{site.baseurl}}/img/gamifying-image-annotation/trusty_patches.png" style="display: inline-block; width: 40vw;"/>
 <p><i>Dataset is <a href="https://www.kaggle.com/competitions/dogs-vs-cats/rules">"Dogs vs Cats" from Kaggle</a></i></p>
 </center>
 
@@ -73,7 +73,7 @@ I came up with a very, very, simple server innheriting from the `SimpleHTTPServe
 
 This was very quick to set up and I had a functional version finished in under an hour. Rust may be application performant, but Python is certainly development performant.
 
-<center>
+<center class="standout">
 <img src="{{site.baseurl}}/img/gamifying-image-annotation/imclasregan.png" style="display: inline-block; width: 40%;"/>
 <p><i>Dataset is <a href="https://www.kaggle.com/competitions/dogs-vs-cats/rules">"Dogs vs Cats" from Kaggle</a></i></p>
 </center>
