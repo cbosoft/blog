@@ -1,3 +1,10 @@
+:root {
+	--background-colour: #ddd;
+	--post-background-colour: #dfdfdf;
+	--accent-colour: #edbb00;
+}
+
+
 div.sidebaricons {
 	display: inline-block;
 	margin-left: 30%;
@@ -35,13 +42,16 @@ figure.highlight {
 
 div.colourbox {
 	display: block;
-	margin-left: 5%;
-	margin-right: 5%;
+	margin-left: auto;
+	margin-right: auto;
+	width: fit-content;
 	background-color: rgb(226, 226, 226);
 	border-style: hidden;
 	border-width: 0px;
 	border-radius: 5px;
 	padding: 5px;
+	border: 2px solid black;
+	box-shadow: 0.1em 0.1em 0px 0.1em black;
 	margin-bottom: 1em;
 }
 
@@ -65,15 +75,36 @@ hr {
 	border: 2px solid black;
 	border-radius: 2px;
 	border-color: black;
+	box-shadow: var(--accent-colour) 3px 3px;
 }
 
-pre {
+pre, .highlight pre {
 	border: 0.05em solid black;
 	/* border-right: 7px solid black;
 	border-bottom: 7px solid black;*/
 	border-radius: 7px;
 	box-shadow: 0.1em 0.1em 0px 0.1em black;
 	padding: 1em;
+	margin-bottom: 1em;
+	width: 100%;
+}
+
+.standout {
+	background-color: white;
+	border: 0.05em solid black;
+	/* border-right: 7px solid black;
+	border-bottom: 7px solid black;*/
+	border-radius: 7px;
+	box-shadow: 0.1em 0.1em 0px 0.1em black;
+	padding: 1em;
+	margin-bottom: 1em;
+	width: fit-content;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.standout p {
+	margin: 0;
 }
 
 h1 {
@@ -105,6 +136,10 @@ div.post {
 	box-shadow: 0.1em 0.1em 0px 0.1em black;
 	padding: 1em;
 	color: black;
+
+	max-width: 21cm;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 div.page {
@@ -134,6 +169,21 @@ div.post span.post-date {
 }
 
 a {
+	color: var(--accent-colour);
+	font-weight: bold;
+}
+
+div.post a {
+	text-decoration: none;
+}
+
+div.sidebar a {
+	color: black;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline !important;
 	color: black;
 }
 
@@ -151,7 +201,7 @@ span.tags a {
 }
 
 body {
-	background-color: #edbb00;
+	background-color: var(--background-colour);
 	color: black;
 }
 
@@ -165,19 +215,26 @@ body {
 	height: fit-content;
 }
 
-div.pagination a {
+div.pagination .pagination-item {
 	background-color: #efefef;
 	font-family: 'Courier New', Courier, monospace;
 	/* border: 2px #555555 dashed; */
 	/* border-radius: 1em 1em 1em 1em; */
 	/* width: 3em; */
-	border: 0.05em solid #555;
+	border: 0.05em solid var(--accent-colour);
 	/* border-right: 7px solid black;
 	border-bottom: 7px solid black;*/
 	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em #555;
+	box-shadow: 0.1em 0.1em 0px 0.1em var(--accent-colour);
 	padding: 1em;
 	/* margin: 1em; */
+}
+
+div.pagination span.pagination-item {
+	background-color: #ddd;
+	color: #aaa;
+	border: 0.05em solid #aaa;
+	box-shadow: 0.1em 0.1em 0px 0.1em #aaa;
 }
 
 .pagination-item {
@@ -187,6 +244,7 @@ div.pagination a {
 
 div.pagination a:hover {
 	border-color: black;
+	color: black;
 	box-shadow: 0.1em 0.1em 0px 0.1em black;
 	text-decoration: none;
 	font-weight: bold;
