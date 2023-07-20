@@ -1,15 +1,30 @@
 ---
-layout: page
+layout: default
 title: About
 ---
 
-Hi I'm Chris, a researcher of things. I have (finally) completed my PhD in complex fluid rheology (Dept. of Chem. Eng., Univ. Strathclyde), and am now a research associate in the Future Manufacturing Research Hub in Continuous Manufacturing and Crystallisation (CMAC) (also based at Strathclyde).
+<div class="post">
 
-I'm currently leveraging machine learning to improve measurement of the properties of crystals (the pharmaceutical kind, not the homeopathic kind). These techniques will be used to improve modelling and real-time control of
-these crystallisation processes.
+<center style="width: fit-content; margin: auto;">
+    <h1><i class="fas fa-code"></i>
+    <i class="fas fa-gamepad"></i>
+    <i class="fas fa-heart"></i>
+    <i class="fas fa-microscope"></i></h1>
+    <hr />
+</center>
 
-I write posts to help cement ideas in my brain - I tend to write about stuff as I learn it. I also write about stuff I've built to showcase it - highlighting issues and how they were surmounted.
+<h1>Hi!</h1>
+<p>I'm Chris, a researcher and coder. I am currently a research associate in the Future Manufacturing Research Hub in Continuous Manufacturing and Crystallisation (CMAC) applying deep learning to image analysis, and building software to support that. Including in-house annotation web apps and detabases for managing training.</p>
 
-I make games. Well, err, I start to and then I get distracted. Turns out games design is quite hard - harder than implementing them! I struggle through though. I've stalled two games (Sìobhaltas, née Áite Domhainn - a procedural space sim, and geas - 2d metroidvania platformer with Lovecraftian themes) so far, and am working on a game engine, which I am determined to finish this time! Check out the [games tag](/tag/games) to see examples.
+<p>My time at CMAC is coming to a close (darn fixed-term contracts!) so I'm <a href="{{ site.baseurl }}cv"><b>open to work</b></a>.</p>
 
-Most of my posts here will centre around a project I've been working on - check them out on my [github](https://github.com/cbosoft).
+<h3>What's all this then?</h3>
+<p>I write posts to help cement ideas in my brain; I tend to write about stuff as I learn it. I also write about stuff I've built to showcase it - highlighting issues and how they were surmounted. These "portfolio pieces" are gathered in the <a href="({{ site.baseurl }}tag/projects">project page</a>.</p>
+
+<p>Other stuff I write about is loosely characteristed into tags - see the <a href="{{ site.baseurl }}all_tags">tag page</a> for the full list.</p>
+
+<small>
+Yellow theme by me, modified from Hyde theme by <a href="https://twitter.com/mdo">@mdo</a>.
+</small>
+
+</div>
