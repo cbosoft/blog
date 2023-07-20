@@ -7,12 +7,13 @@
         {% endif %}
       </a>
 
-      {% if post.layout == "projectpage" %}
-      {% assign techs = post.technologies | split: ", " %}
+      {% assign p=post %}
+      {% include tech_from_tags.html %}
       {% for tech in techs %}
+      <a style="color: black;" href="{{ site.baseurl }}tag/{{ tech }}">
       {% include icon_for_tech.html %}
+      </a>
       {% endfor %}
-      {% endif %}
 
       <small>{{ post.date | date_to_string }}</small>
       <br />
