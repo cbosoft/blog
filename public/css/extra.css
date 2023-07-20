@@ -249,3 +249,46 @@ div.pagination a:hover {
 	text-decoration: none;
 	font-weight: bold;
 }
+
+@keyframes badge-anim {
+	0% { transform: scale(50%); }
+	80% { transform: scale(110%); }
+	to { transform: scale(100%); }
+}
+
+div.badges {
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	top: 0px;
+
+	z-index: 100;
+}
+
+div.badge {
+	margin: 0.5em;
+	padding: 0.5em;
+	height: fit-content;
+	border-radius: 14px;
+
+	animation-name: badge-anim;
+	animation-duration: 0.5s;
+
+	background-color: white;
+	border: 1px solid black;
+	box-shadow: 0.1em 0.1em 0px 0.1em black;
+}
+
+div.badge.cruk {
+	background-color: white;
+	border: 1px solid #271085;
+	box-shadow: 0.1em 0.1em 0px 0.1em #271085;
+}
+
+div.badge.work {
+	background-color: var(--accent-colour);
+}
+
+div.badge img {
+	margin: 0px;
+}
