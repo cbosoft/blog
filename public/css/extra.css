@@ -103,6 +103,11 @@ pre, .highlight pre {
 	margin-right: auto;
 }
 
+.standout.special {
+	margin: 1em;
+	background-color: var(--accent-colour);
+}
+
 .standout p {
 	margin: 0;
 }
