@@ -23,7 +23,7 @@ title: Home
         &centerdot;
         {% assign tech=tag %}
         {% include icon_for_tech.html %}
-        <a href="tag/{{ tag }}">{{ tag }}</a>
+        <a href="{{ site.baseurl }}tag/{{ tag }}">{{ tag }}</a>
       {% endfor %}
 
     {% if post.layout == "post" %}
