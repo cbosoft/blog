@@ -4,6 +4,14 @@
 	--accent-colour: #edbb00;
 }
 
+body {
+    /* https://www.magicpattern.design/tools/css-backgrounds */
+    background-color: #ddd;
+    opacity: 1;
+    background-size: 10px 10px;
+    background-image: repeating-linear-gradient(45deg, #b9b8b8 0, #b9b8b8 1px, #ddd 0, #ddd 50%);
+}
+
 
 div.sidebaricons {
 	display: inline-block;
