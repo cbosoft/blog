@@ -48,21 +48,6 @@ figure.highlight {
 	width: fit-content;
 }
 
-div.colourbox {
-	display: block;
-	margin-left: auto;
-	margin-right: auto;
-	width: fit-content;
-	background-color: rgb(226, 226, 226);
-	border-style: hidden;
-	border-width: 0px;
-	border-radius: 5px;
-	padding: 5px;
-	border: 2px solid black;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
-	margin-bottom: 1em;
-}
-
 div.sidebar {
 	background-color: #efefef;
 	box-shadow: 0.1em 0.1em 0px 0.1em black;
@@ -86,29 +71,37 @@ hr {
 	box-shadow: var(--accent-colour) 3px 3px;
 }
 
-pre, .highlight pre {
-	border: 0.05em solid black;
+figure.highlight {
+	border: 2px solid black;
 	/* border-right: 7px solid black;
 	border-bottom: 7px solid black;*/
-	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
-	padding: 1em;
+	border-radius: 0px;
+	/* box-shadow: 0.1em 0.1em 0px 0.1em black; */
+	box-shadow: 0.3em 0.3em black;
+	/* padding: 1em; */
+	margin: auto;
 	margin-bottom: 1em;
-	width: 100%;
+	width: calc(100% - 2em);
+	max-width: fit-content;
 }
 
-.standout {
+.standout, .colourbox {
 	background-color: white;
-	border: 0.05em solid black;
+	border: 2px solid black;
 	/* border-right: 7px solid black;
 	border-bottom: 7px solid black;*/
-	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
+	/* border-radius: 7px; */
+	/* box-shadow: 0.1em 0.1em 0px 0.1em black; */
+	box-shadow: 0.5em 0.5em black;
 	padding: 1em;
 	margin-bottom: 1em;
 	width: fit-content;
 	margin-left: auto;
 	margin-right: auto;
+}
+
+.colourbox {
+	background-color: var(--accent-colour);
 }
 
 .standout.special {
@@ -120,61 +113,25 @@ pre, .highlight pre {
 	margin: 0;
 }
 
-h1 {
-	font-family: 'Courier New', Courier, monospace;
+h1, h2, h3, h4 {
+	font-family: 'Fira Sans', sans-serif;
+	font-weight: 900;
+	font-style: normal;
 	color: black;
 }
 
-h2 {
-	font-family: 'Courier New', Courier, monospace;
-	color: black;
-}
-
-h3 {
-	font-family: 'Courier New', Courier, monospace;
-	color: black;
-}
-
-h4 {
-	font-family: 'Courier New', Courier, monospace;
-	color: black;
-}
-
-div.post {
+div.post, div.page, div.related {
 	background-color: #efefef;
-	border: 0.05em solid black;
+	border: 2px solid black;
 	/* border-right: 7px solid black;
 	border-bottom: 7px solid black;*/
-	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
+	box-shadow: 0.5em 0.5em black;
 	padding: 1em;
 	color: black;
 
 	max-width: 31cm;
 	margin-left: auto;
 	margin-right: auto;
-}
-
-div.page {
-	background-color: #efefef;
-	border: 0.05em solid black;
-	/* border-right: 7px solid black;
-	border-bottom: 7px solid black;*/
-	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
-	padding: 1em;
-	color: black;
-}
-
-div.related {
-	background-color: #efefef;
-	border: 0.05em solid black;
-	/* border-right: 7px solid black;
-	border-bottom: 7px solid black;*/
-	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
-	padding: 1em;
-	color: black;
 }
 
 div.post span.post-date {
@@ -202,7 +159,8 @@ a:hover {
 
 h1.post-title a {
 	color: black;
-	font-family: 'Courier New', Courier, monospace;
+	font-family: 'Fira Sans', sans-serif;
+	font-weight: 900;
 }
 
 span.tags {
@@ -231,23 +189,15 @@ body {
 div.pagination .pagination-item {
 	background-color: #efefef;
 	font-family: 'Courier New', Courier, monospace;
-	/* border: 2px #555555 dashed; */
-	/* border-radius: 1em 1em 1em 1em; */
-	/* width: 3em; */
-	border: 0.05em solid var(--accent-colour);
-	/* border-right: 7px solid black;
-	border-bottom: 7px solid black;*/
-	border-radius: 7px;
-	box-shadow: 0.1em 0.1em 0px 0.1em var(--accent-colour);
+	border: 2px solid black;
 	padding: 1em;
-	/* margin: 1em; */
 }
 
 div.pagination span.pagination-item {
 	background-color: #ddd;
 	color: #aaa;
 	border: 0.05em solid #aaa;
-	box-shadow: 0.1em 0.1em 0px 0.1em #aaa;
+	box-shadow: 5px 5px #aaa;
 }
 
 .pagination-item {
@@ -255,13 +205,13 @@ div.pagination span.pagination-item {
 	text-align: center;
 }
 
-div.pagination a:hover {
+/* div.pagination a:hover {
 	border-color: black;
 	color: black;
 	box-shadow: 0.1em 0.1em 0px 0.1em black;
 	text-decoration: none;
 	font-weight: bold;
-}
+} */
 
 @keyframes badge-anim {
 	0% { transform: scale(50%); }
@@ -274,28 +224,32 @@ div.badges {
 	left: 0px;
 	right: 0px;
 	top: 0px;
+	height: fit-content;
 
 	z-index: 100;
+	display: flex;
+	flex-direction: column;
 }
 
 div.badge {
 	margin: 0.5em;
 	padding: 0.5em;
 	height: fit-content;
-	border-radius: 14px;
+	border-radius: 0px;
 
 	animation-name: badge-anim;
 	animation-duration: 0.5s;
 
 	background-color: white;
 	border: 1px solid black;
-	box-shadow: 0.1em 0.1em 0px 0.1em black;
+	box-shadow: 5px 5px black;
+	margin-bottom: 1em;
 }
 
 div.badge.cruk {
 	background-color: white;
 	border: 1px solid #271085;
-	box-shadow: 0.1em 0.1em 0px 0.1em #271085;
+	box-shadow: 5px 5px #271085;
 }
 
 div.badge.work {
@@ -304,4 +258,23 @@ div.badge.work {
 
 div.badge img {
 	margin: 0px;
+}
+
+.button {
+	box-shadow: 5px 5px;
+}
+
+.button:hover {
+	box-shadow: 3px 3px;
+	transform: translate(2px, 2px);
+}
+
+.button:active {
+	box-shadow: 1px 1px;
+	transform: translate(4px, 4px);
+}
+
+.button a, a.button {
+	color: black;
+	text-decoration: none !important;
 }
