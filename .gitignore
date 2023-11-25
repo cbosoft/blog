@@ -30,8 +30,6 @@ nbproject
 *.sublime-project
 *.sublime-workspace
 .idea
-Gemfile
-Gemfile.lock
 
 # Komodo
 *.komodoproject
