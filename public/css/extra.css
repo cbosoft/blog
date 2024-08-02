@@ -99,6 +99,7 @@ figure.highlight {
 	margin-bottom: 1em;
 	width: calc(100% - 2em);
 	max-width: fit-content;
+  min-width: 50vw;
 }
 
 .standout, .colourbox, pre.mermaid {
