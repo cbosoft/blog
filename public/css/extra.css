@@ -36,6 +36,22 @@ div.halfsidebarlinks {
 	width: 75%;
 }
 
+div.row {
+  display: flex;
+  align-items: baseline;
+  flex-direction: row;
+}
+
+div.col {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+div.grow {
+  flex-grow: 1;
+}
+
 figure.highlight {
 	margin: 0;
 	margin-inline-start: 0px;
@@ -85,7 +101,7 @@ figure.highlight {
 	max-width: fit-content;
 }
 
-.standout, .colourbox {
+.standout, .colourbox, pre.mermaid {
 	background-color: white;
 	border: 2px solid black;
 	/* border-right: 7px solid black;
@@ -98,6 +114,12 @@ figure.highlight {
 	width: fit-content;
 	margin-left: auto;
 	margin-right: auto;
+}
+
+pre.mermaid {
+	width: unset;
+	margin-left: 0;
+	margin-right: 0;
 }
 
 .colourbox {
@@ -252,6 +274,17 @@ div.badge.cruk {
 	box-shadow: 5px 5px #271085;
 }
 
+div.badge.msf {
+  color: white;
+	background-color: black;
+	border: 2px solid red;
+	box-shadow: 5px 5px red;
+}
+
+div.badge.msf * {
+  color: white;
+}
+
 div.badge.work {
 	background-color: var(--accent-colour);
 }
@@ -277,4 +310,19 @@ div.badge img {
 .button a, a.button {
 	color: black;
 	text-decoration: none !important;
+}
+
+pre.mermaid {
+  text-align: center;
+}
+
+.mermaid .flowchart-label * {
+  stroke-width: 2px !important;
+  stroke: black !important;
+  fill: var(--accent-colour) !important;
+}
+
+.mermaid .nodeLabel {
+  color: black !important;
+  font-weight: bold !important;
 }
