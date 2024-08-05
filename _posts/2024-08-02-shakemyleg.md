@@ -152,12 +152,14 @@ pub enum Expression {
 
 `Box`iness aside, I adore the enum of struct thing `Rust` has going on. What a great way to sort-of do polymorphism.
 
-## Fighting the borrow checker with (`A`)`Rc`s
+## Fighting the borrow checker with ~~(`A`)`Rc`s~~ `Box`es
 In order to access a reference to a struct attr, as well as a mutable reference to another attr, we need to circumvent the borrow checker at compile time by getting us some interior mutability - we need to wrap the object in something which will do the borrow checking at runtime. `Rc` is one of these. It uses reference counting to decide if you're allowed to mutate something. (If there's more than one copy of the `Rc`'d object, the answer is no.) This is how I got the expression evaluation to work: we have two attrs of `StateMachine` to consider while evaluating an `Expression` (specifically, an `Expression::Identifier`). We have three "stores" for variables: `globals`, `inputs`, and `outputs`. The first is an attribute of the `StateMachine` which needs to be mutable. The second attr to consider... is the `State` which is being run. This is where the `Expression`s are stored in the first place. This does not need to be mutated.
 
 So to evaluate an expression, I start from the `State` in an `Rc` which is owned by the `StateMachine`, and clone it so I have an `Rc<State>` not owned by the machine. I get a mutable reference to the `StateMachine` when I mutably borrow the `globals` store, and the expression can evaluate as desired. This also has the advantage of allowing me to cheaply move the pointer `Rc<State>` so I keep a reference to the current `State` as `StateMachine{ ... current_state: Rc<State> }`.
 
 However, I encountered a problem... In my use-case for this interpreter, I need the `StateMAchine` to be threadsafe (i.e., I need it to be `Send+Sync`) and `Rc` is **not** thread safe. Damn. But `Arc` is! So just move to `Arc`? Yup, that works! Though, if you really want to use `Rc` instead, I locked the `Arc` usage behind a `thread_safe` feature flag.
+
+<div class="colourbox">As I was writing this I realised I don't actually need to use (`A`)`Rc`s to do this, a simple `Box` will do fine. So while this is kinda wrong, I'll leave it here. At least I learned about feature flags, testing for send+sync behaviour, and why writing this blog is useful.</div>
 
 # Conclusion
 This was a really satisfying wee project! SML is now live in use in my instrumentation software, pending rigorous testing. `Rust` and `cargo` really make developing a breeze. Need a a package? `cargo install`. Need a test suite ran? `cargo test`. Need to publish to package repository? `cargo publish`. The strong typing, borrow checker, and `Result` system really put me at ease that if this compiles, there's unlikely to be a runtime panic.
