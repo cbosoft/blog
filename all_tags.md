@@ -10,7 +10,7 @@ title: All Tags
 
 ### Programming Languages
 
-[C](/blog/tag/C) · [C++](/blog/tag/C++) · [Python](/blog/tag/Python) · [Rust](/blog/tag/Rust)
+[C](/blog/tag/C) · [C++](/blog/tag/C++) · [Python](/blog/tag/Python) · [Rust](/blog/tag/Rust) · [Swift](/blog/tag/Swift)
 
 
 ### Technologies
