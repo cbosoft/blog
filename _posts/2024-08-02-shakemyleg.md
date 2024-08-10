@@ -159,7 +159,7 @@ So to evaluate an expression, I start from the `State` in an `Rc` which is owned
 
 However, I encountered a problem... In my use-case for this interpreter, I need the `StateMAchine` to be threadsafe (i.e., I need it to be `Send+Sync`) and `Rc` is **not** thread safe. Damn. But `Arc` is! So just move to `Arc`? Yup, that works! Though, if you really want to use `Rc` instead, I locked the `Arc` usage behind a `thread_safe` feature flag.
 
-<div class="colourbox">As I was writing this I realised I don't actually need to use (`A`)`Rc`s to do this, a simple `Box` will do fine. So while this is kinda wrong, I'll leave it here. At least I learned about feature flags, testing for send+sync behaviour, and why writing this blog is useful.</div>
+<div class="colourbox">As I was writing this I realised I don't actually need to use (<code>A</code>)<code>Rc</code>s to do this, a simple <code>Box</code> will do fine. So while this is kinda wrong, I'll leave it here. At least I learned about feature flags, testing for send+sync behaviour, and why writing this blog is useful.</div>
 
 # Conclusion
 This was a really satisfying wee project! SML is now live in use in my instrumentation software, pending rigorous testing. `Rust` and `cargo` really make developing a breeze. Need a a package? `cargo install`. Need a test suite ran? `cargo test`. Need to publish to package repository? `cargo publish`. The strong typing, borrow checker, and `Result` system really put me at ease that if this compiles, there's unlikely to be a runtime panic.
