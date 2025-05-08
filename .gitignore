@@ -4,6 +4,7 @@ _site
 blog
 .ruby-version
 .jekyll-cache
+/vendor
 
 # Numerous always-ignore extensions
 *.diff
