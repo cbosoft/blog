@@ -13,7 +13,10 @@
 
   <script>
     // Get the element with id="defaultOpen" and click on it
-    document.getElementById("defaultOpen").click();
+    const e = document.getElementById("defaultOpen");
+    if (!!e) {
+      e.click();
+    }
   </script>
 </body>
 
