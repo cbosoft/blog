@@ -327,3 +327,16 @@ pre.mermaid {
   color: black !important;
   font-weight: bold !important;
 }
+
+
+
+
+
+pre.cobol {
+  padding-top: 3px;
+  padding-bottom: 3px;
+  margin-left: 2cm;
+  border-left: 2px dashed #aaa;
+  border-radius: 0;
+  padding-left: 2px;
+}
