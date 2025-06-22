@@ -1,7 +1,7 @@
 ---
 title: "Cobol in 2025"
 layout: post
-excerpt: "..."
+excerpt: "COBOL is a 70 year old language that somehow still powers businesses today. What's it like?"
 tags: misc
 ---
 
@@ -16,7 +16,7 @@ Oh wait, that's the wrong cobol.
 
 I've been intrigued by COBOL for a long time. It's such a long lived language, as old as FORTRAN, but without the loving fanbase.
 
-Why does COBOL persist despite getting no love? [It is used today in banking and infrastructure systems all over.]() Hidden, in the background, making sure I can buy my luxury overpriced coffee beans (organic, single-origin, family run, co-fermented, unwashed, light roast, magical beans).
+Why does COBOL persist despite getting no love? [It is used today in banking systems all over.](https://www.castsoftware.com/pulse/why-cobol-still-dominates-banking-and-how-to-modernize) Hidden, in the background, making sure I can buy my luxury overpriced coffee beans (organic, single-origin, family run, co-fermented, unwashed, light roast, magical beans).
 
 Where does it come from? (Other than the past.) COBOL derives from other English-adjacent wordy business-type languages popular when we were just getting started. ("We" - I mean those in the field of computer science.) Dr. Hopper's FLOWMATIC, amongst others, were inspiration for the easily readible (but incredibly verbose) language.
 
