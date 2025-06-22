@@ -14,9 +14,9 @@ title: About
 </center>
 
 <h1>Hi!</h1>
-<p>I'm Chris, a researcher and coder. I am currently a research associate in the Future Manufacturing Research Hub in Continuous Manufacturing and Crystallisation (CMAC) applying deep learning to image analysis, and building software to support that. Including in-house annotation web apps and databases for managing training.</p>
+<p>I'm Chris, a researcher and coder. I am currently a research fellow at CMAC in the University of Strathclyde. My research includes applications of AI in pharmaceutical manufacturing and development, especially with regards to particle characterisation.</p>
 
-<p>Currently working on the CMAC Hub DataFactory project, bringing image analysis to our automated robotics platform.</p>
+<p>Currently working on the CMAC's Crystallisation Screening DataFactory (CSDF) and CERSI projects, amogst other things. Lab automation, infrastructure and operations are what I spend the bulk of my time doing. (Mostly, I just write code.)</p>
 
 <!--<p>My time at CMAC is coming to a close (darn fixed-term contracts!) so I'm <a href="{{ site.baseurl }}cv"><b>open to work</b></a>.</p>-->
 
